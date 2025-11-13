@@ -1,3 +1,13 @@
+---
+title: Solucionador de Puzzle (IA)
+emoji: 🧩
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # 🧩 Solucionador de Rompecabezas Deslizante (N-Puzzle) con IA
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
