@@ -1,0 +1,387 @@
+/* Estilos generales */
+:root{
+  --bg: #121212;
+  --panel-bg: #1E1E1E;
+  --text: #EAEAEA;
+  --muted: #DADADA;
+  --border: rgba(255,255,255,0.06);
+  --input-bg: rgba(255,255,255,0.02);
+  --primary: #219653; /* accessible green */
+  --primary-contrast: #0b0b0b; /* text on primary */
+  --accent: #1976D2;
+  --replay: #1976D2;
+  --shadow: rgba(0,0,0,0.6);
+}
+
+/* Light theme variables */
+[data-theme="light"]{
+  --bg: #F5F7FA;
+  --panel-bg: #FFFFFF;
+  --text: #111216;
+  --muted: #333333;
+  --border: rgba(0,0,0,0.08);
+  --input-bg: #F3F6F9;
+  --primary: #2E7D32; /* darker green for contrast on light */
+  --primary-contrast: #FFFFFF;
+  --accent: #1565C0;
+  --replay: #1565C0;
+  --shadow: rgba(0,0,0,0.06);
+}
+
+* { box-sizing: border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height:1.45;
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+main{
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: var(--panel-bg);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px var(--shadow);
+  transition: background-color 220ms ease, box-shadow 220ms ease;
+}
+
+header .header-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+header .header-top{ display:flex; align-items:center; justify-content:center; gap:12px; position:relative; padding: 10px 18px; }
+header h1{
+  margin: 0;
+  font-size: 1.6rem;
+  text-align: center;
+  color: var(--text);
+  /* Usar flujo normal y flexbox para centrar el título de forma responsiva
+     en lugar de position:absolute que provoca recortes en ciertos anchos. */
+  position: static;
+  transform: none;
+  flex: 1 1 auto;
+}
+/* Mantener el título perfectamente centrado: colocamos las acciones en la esquina derecha
+  sin afectar el flujo del h1. Usamos position:absolute para la caja de acciones. */
+header .header-actions{ position: absolute; right: 18px; top: 50%; transform: translateY(-50%); display:flex; align-items:center; }
+header .header-actions button{ padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; margin-right:8px; }
+
+/* Formulario */
+form#puzzle-form{
+  display:block;
+}
+.form-group{
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.form-group label{
+  font-weight:600;
+  color:var(--muted);
+}
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="file"],
+.form-group input[type="range"]{
+  width:100%;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+/* Custom file input styling (modern browsers) */
+.form-group input[type="file"]{
+  padding: 6px 8px;
+}
+.form-group input[type="file"]::file-selector-button{
+  margin-right: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  color: var(--text);
+  cursor: pointer;
+}
+.form-group input[type="file"]::-webkit-file-upload-button{
+  margin-right: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Range slider appearance tweaks */
+input[type=range]{
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: linear-gradient(90deg,var(--primary) 0%, var(--primary) 50%, rgba(255,255,255,0.08) 50%);
+  border-radius: 6px;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:18px; height:18px; border-radius:50%; background:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.6);
+}
+
+.form-actions{
+  display:flex;
+  gap:10px;
+  margin-top:8px;
+}
+
+/* Botones */
+button{
+  padding:10px 14px;
+  border-radius:8px;
+  border: none;
+  font-weight:700;
+  cursor:pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+button:active{ transform: translateY(1px); }
+
+#solve-button{
+  background: var(--primary);
+  color: var(--primary-contrast);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+#solve-button:hover{ filter: brightness(1.05); }
+
+#reset-button{
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+}
+#reset-button:hover{ filter: brightness(1.08); }
+
+#toggle-theory-button{
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding:8px 12px;
+  border-radius:8px;
+}
+
+/* Algorithm switch - ajustar para heredar la rejilla de `.form-group` y alinear el switch */
+.algorithm-group{
+  /* usar la grid definida en .form-group para que el control quede alineado */
+  align-items: center;
+  gap: 12px;
+}
+.algorithm-group .alg-switch-wrapper{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.algorithm-group .alg-label{ font-weight:600; color:var(--muted); font-size:0.95rem; }
+.switch{ position: relative; display: inline-block; width:48px; height:26px; }
+.switch input{ opacity: 0; width: 0; height: 0; }
+.slider{ position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.08); transition: .2s; border-radius: 26px; border:1px solid var(--border); }
+.slider:before{ position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: var(--panel-bg); transition: .2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.switch input:checked + .slider{ background-color: rgba(255,255,255,0.06); border:1px solid var(--border); }
+.switch input:checked + .slider:before{ transform: translateX(22px); }
+.slider.round{ border-radius: 26px; }
+
+/* Etiquetas de algoritmo: marcar la selección de forma explícita (no "encendido/apagado") */
+.algorithm-group .alg-label.active{ color: var(--text); font-weight:800; }
+
+/* Make sure hidden input doesn't affect layout */
+#algoritmo-hidden{ display:none; }
+#toggle-theory-button:hover{ background: rgba(255,255,255,0.02); }
+
+/* Results */
+#results-area{ margin-top: 18px; }
+
+/* Caja del botón de teoría: transiciones suaves para que no pegue "saltos" */
+.theory-toggle-container{ transition: transform 360ms ease, margin 360ms ease, opacity 300ms ease; }
+
+/* Spinner (texto "Cargando...") centrado para que coincida con el bloque de resultados */
+#spinner{
+  display: none; /* controlado desde JS inline */
+  margin-top: 18px;
+  text-align: center; /* centrar el texto como las estadísticas */
+}
+#spinner p{
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+.image-container{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:flex-start;
+}
+.image-wrapper{ flex:1 1 220px; min-width:180px; }
+.image-wrapper img{ display:block; width:100%; height:auto; border-radius:8px; }
+
+/* Wrapper para la imagen + botón de reproducción: centrar botón debajo de la imagen */
+.image-play-wrapper{
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* centra el contenido horizontalmente */
+  gap: 8px;
+  margin: 10px 0;
+}
+.image-play-wrapper .replay-button{
+  margin-top: 6px;
+  /* Mantener apariencia consistente con otros botones */
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  font-weight:700;
+  cursor: pointer;
+  background: var(--primary);
+  color: var(--primary-contrast);
+}
+.image-play-wrapper .replay-button:disabled{ opacity: 0.6; cursor: default; }
+
+.move-count{ font-weight:600; margin-top:8px; }
+.stats-container{ margin-bottom:6px; text-align: center; }
+.stats-container h3{ margin:0 0 4px 0; }
+.stats-container ul{ padding-left:18px; margin:6px 0; }
+.stats-container li{ margin-bottom:6px; color:#D9D9D9; }
+
+/* Resumen compacto de estadísticas (una línea) */
+.stats-summary{
+  margin: 4px 0 0 0;
+  color: var(--muted);
+  font-weight:600;
+  display:inline-block;
+  animation: fadeIn 220ms ease both;
+}
+.stats-summary .stats-item{ margin-right:10px; }
+.stats-icon{ display:inline-flex; align-items:center; justify-content:center; width:1.15em; height:1.15em; margin-right:8px; opacity:0.95; }
+.stats-icon svg{ width:1em; height:1em; vertical-align:middle; stroke:var(--accent); fill:none; }
+
+@keyframes fadeIn{
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Reusable fade-in helper */
+.fade-in{ animation: fadeIn 300ms ease both; }
+
+/* Spinner styling: icon + texto, con animación de giro */
+.spinner-inner{ display:inline-flex; gap:10px; align-items:center; justify-content:center; }
+.spinner-icon{ width:18px; height:18px; border-radius:50%; border:3px solid rgba(255,255,255,0.12); border-top-color: var(--primary); box-sizing:border-box; animation: spin 900ms linear infinite; }
+@keyframes spin{ to { transform: rotate(360deg); } }
+
+/* Reservar espacio para resultados durante la carga y animar su crecimiento */
+#results-area.reserving{
+  /* panel visible mientras se reserva espacio - usar mismo estilo que inputs */
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.01);
+  border-radius: 8px;
+  padding: 12px 18px 12px 18px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center; /* centra verticalmente el spinner */
+  justify-content: center;
+  min-height: var(--reserved-height, 320px);
+  transition: min-height 360ms ease;
+}
+
+/* (Se usa transición de min-height para reservar y colapsar el panel) */
+
+/* Evitar transición cuando aplicamos la altura estimada instantáneamente */
+#results-area.reserving.instant{
+  transition: none !important;
+}
+
+/* Cuando ya tenemos contenido, cambiar a layout en columna */
+/* Cuando el panel ya tiene contenido, lo presentamos centrado verticalmente dentro
+  del área reservada. De esta manera cualquier exceso de altura medido será menos
+  perceptible en pantallas grandes. */
+#results-area.has-content{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* centra verticalmente */
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.01);
+  border-radius: 8px;
+  padding: 12px 18px 12px 18px;
+  box-sizing: border-box;
+  /* Mantener la altura reservada exactamente igual a la medida previa para evitar
+    saltos y asegurar que el panel no cambie su tamaño al aplicar la clase
+    has-content. */
+  min-height: var(--reserved-height, auto);
+}
+
+/* Ajustar spacing del contenedor del botón teórico para reducir espacio inferior */
+.theory-toggle-container{
+  margin-top: 8px;
+}
+
+/* Cuando el panel está en modo reserving, centrar el spinner dentro del panel */
+#results-area.reserving > #spinner{
+  width: 100%;
+  height: 100%;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Asegurar que el spinner interno no se vea desplazado por padding */
+#results-area.reserving .spinner-inner{ margin: 0; }
+
+/* Asegurar que el contenedor de estadísticas titula y la imagen pueden recibir un fade-in conjunto */
+.stats-container h3{ display:block; }
+
+
+/* Replay button (dentro de results) */
+#replay-button{
+  display:inline-block;
+  margin-top:8px;
+  background:var(--primary);
+  color:var(--primary-contrast);
+}
+#replay-button:hover{ filter:brightness(1.05); }
+
+/* Theory section */
+#theory-section{
+  margin-top:0;
+  color:var(--muted);
+  border-radius: 0 0 8px 8px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 350ms ease, opacity 250ms ease;
+}
+
+#theory-section code{ background: rgba(0,0,0,0.04); padding:2px 6px; border-radius:4px; }
+
+/* Images and figures should be responsive */
+img, figure{ max-width:100%; height:auto; }
+
+/* Small screens */
+@media (max-width: 600px){
+  .form-group{ grid-template-columns: 1fr; }
+  .form-actions{ flex-direction: column; }
+  .image-wrapper{ min-width: 140px; }
+  main{ padding:16px; margin:12px; }
+}
+
+/* Bloque que centra estadísticas e imagen */
+.result-center-block{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+}
+
+/* Fade-out helper used when collapsing results: primero desvanecer contenido, luego colapsar */
+.result-center-block.fade-out{
+  opacity: 0;
+  transition: opacity 180ms ease;
+}

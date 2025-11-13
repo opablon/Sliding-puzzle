@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solucionador de Puzzles con IA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-top">
+            <h1>Solucionador de Puzzle con IA</h1>
+            <div class="header-actions">
+                <button id="theme-toggle-button">Modo Claro</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <form id="puzzle-form">
+            <div class="form-group">
+                <label for="image-file">Subir Imagen:</label>
+                <input type="file" id="image-file" name="imagen" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label for="image-url">O URL de Imagen:</label>
+                <input type="text" id="image-url" name="image-url" placeholder="Pega una URL de imagen aquí">
+            </div>
+
+            <div class="form-group algorithm-group">
+                <label for="alg-switch">Algoritmo:</label>
+                <div class="alg-switch-wrapper">
+                    <span class="alg-label">A*</span>
+                    <label class="switch" aria-hidden="true">
+                        <input type="checkbox" id="alg-switch" name="algoritmo-switch" aria-label="Alternar algoritmo" />
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="alg-label">BFS</span>
+                </div>
+                <input type="hidden" id="algoritmo-hidden" name="algoritmo" value="astar">
+            </div>
+
+            <div class="form-group">
+                <label for="mezclas">Cantidad de Mezclas: <span id="mezclas-valor">30</span></label>
+                <input type="range" id="mezclas" name="cantidad_mezclas" min="1" max="100" value="30">
+            </div>
+
+            <div class="form-group">
+                <label for="pausa">Pausa de Animación (s): <span id="pausa-valor">0.5</span>s</label>
+                <input type="range" id="pausa" name="pausa" min="0.1" max="2" step="0.1" value="0.5">
+            </div>
+
+            <div class="form-group">
+                <label for="semilla">Semilla Aleatoria:</label>
+                <input type="number" id="semilla" name="semilla" placeholder="Opcional">
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" id="solve-button">Resolver</button>
+                <button type="reset" id="reset-button">Limpiar Formulario</button>
+            </div>
+        </form>
+
+        <div id="spinner" style="display:none;">
+            <div class="spinner-inner">
+                <div class="spinner-icon" aria-hidden="true"></div>
+                <p class="stats-summary">Cargando...</p>
+            </div>
+        </div>
+
+        <div id="results-area">
+            <!-- El GIF de la solución se mostrará aquí -->
+        </div>
+        
+        <div class="theory-toggle-container">
+            <button id="toggle-theory-button">Ver Explicación Teórica ▼</button>
+        </div>
+
+    <div id="theory-section">
+            <h2>¿Cómo funciona esto?</h2>
+            <p>Esta aplicación demuestra cómo un computador "piensa" para resolver un problema complejo. Elige entre dos algoritgos clásicos de Inteligencia Artificial para encontrar el camino más corto desde un estado mezclado hasta la solución.</p>
+
+            <hr>
+
+            <h3>1. BFS (Búsqueda en Anchura)</h3>
+            <p>El <b>BFS (Breadth-First Search)</b> es el algoritmo de "fuerza bruta". Es como una onda expansiva en el agua.</p>
+            <p>Comienza en el estado inicial y explora todas las jugadas posibles a 1 movimiento de distancia. Luego, explora todas las jugadas a 2 movimientos de distancia, y así sucesivamente, "nivel por nivel", hasta que uno de los caminos que explora aterriza en la solución. Usa una estructura de datos llamada <b>Cola (Queue o `deque`)</b> para asegurarse de explorar en el orden correcto (Primero en Entrar, Primero en Salir).</p>
+
+            <figure style="margin: 20px auto; text-align: center;">
+                <img src="{{ url_for('static', filename='assets/bfs.gif') }}" alt="Animación de Búsqueda BFS" style="width: 100%; max-width: 400px; display: block; margin: 10px auto; border: 1px solid gray;">
+                <figcaption style="font-size: 0.8em; color: gray;">
+                    GIF por Mre, licencia <a href="https://creativecommons.org/licenses/by-sa/3.0" target="_blank">CC BY-SA 3.0</a>, via Wikimedia Commons
+                </figcaption>
+            </figure>
+
+            <ul>
+                <li><b>Ventaja:</b> Garantiza al 100% que la solución que encuentra es la <b>más corta posible</b> (óptima).</li>
+                <li><b>Desventaja:</b> Es "ciego". Gasta una enorme cantidad de tiempo y memoria explorando caminos inútiles que se alejan del objetivo. Para un puzzle de 4x4, no es viable.</li>
+            </ul>
+        
+            <hr>
+
+                <h3>2. A* (A-Estrella)</h3>
+                <p>El <b>A* (A-Estrella)</b> es el algoritmo del "explorador inteligente". No explora a ciegas; usa una "brújula" para moverse siempre en la dirección que <i>parece</i> más prometedora.</p>
+                <p>A diferencia de BFS, usa una <b>Cola de Prioridad (`heapq`)</b> que le permite evaluar todos los caminos disponibles y elegir el que <i>estima</i> que lo llevará a la solución más rápido. Es dramáticamente más rápido que BFS.</p>
+    
+                <figure style="margin: 20px auto; text-align: center;">
+                    <img src="{{ url_for('static', filename='assets/astar.gif') }}" alt="Animación de Búsqueda A*" style="width: 100%; max-width: 400px; display: block; margin: 10px auto; border: 1px solid gray;">
+                    <figcaption style="font-size: 0.8em; color: gray;">
+                        GIF por Mozyss, licencia <a href="https://creativecommons.org/licenses/by-sa/3.0" target="_blank">CC BY-SA 3.0</a>, via Wikimedia Commons
+                    </figcaption>
+                </figure>
+    
+                <h4>La Fórmula Mágica: f = g + h</h4>
+                <p>La "brújula" de A* es una simple fórmula que calcula una puntuación (<code>f</code>) para cada estado (movimiento) posible:</p>
+                <p style="text-align: center; font-weight: bold; font-size: 1.2em; margin: 15px 0;">
+                    f(n) = g(n) + h(n)
+                </p>
+                <ul>
+                    <li><b><code>g(n)</code> (Costo Real):</b> Es el costo <i>real</i> para llegar hasta este punto. En nuestro puzzle, es simplemente la <b>cantidad de movimientos que ya hemos hecho</b>.</li>
+                    <li><b><code>h(n)</code> (Heurística):</b> Es la <b>estimación</b> de cuánto falta para llegar al objetivo. Esta es la parte "inteligente".</li>
+                </ul>
+                <p>El algoritmo A* siempre elegirá explorar el camino que tenga la puntuación <code>f</code> más baja.</p>
+    
+                <h4>La Heurística: Distancia Manhattan</h4>
+                <p>Para que A* funcione, necesitamos una buena "estimación" (<code>h</code>). Para este puzzle, la mejor heurística es la <b>Distancia Manhattan</b>.</p>
+                <p>Es muy simple: por cada pieza en el tablero (excepto el vacío), se calcula la cantidad de movimientos (solo horizontales y verticales) que le tomaría llegar a su posición correcta si el tablero estuviera vacío. La suma de todas esas distancias es la puntuación <code>h</code>.</p>
+    
+                <figure style="margin: 20px auto; text-align: center;">
+                    <img src="{{ url_for('static', filename='assets/manhattan.gif') }}" alt="Diagrama de Distancia Manhattan" style="width: 100%; max-width: 300px; display: block; margin: 10px auto; border: 1px solid gray;">
+                    <figcaption style="font-size: 0.8em; color: gray;">
+                    Diagrama por amin, Copyrighted free use, via Wikimedia Commons
+                    </figcaption>
+                </figure>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
