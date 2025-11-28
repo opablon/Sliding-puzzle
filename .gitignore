@@ -1,0 +1,7 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code / Codespaces
+.vscode/
+.devcontainer/

@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Solucionador de Puzzles con IA</title>
+        <!-- Tailwind CDN -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Alpine.js -->
+        <script defer src="https://unpkg.com/alpinejs@3.13.2/dist/cdn.min.js"></script>
+        <link rel="icon" href="{{ url_for('static', filename='assets/favicon.svg') }}" type="image/svg+xml">
+    </head>
+    <body class="bg-gray-900 text-gray-100 antialiased font-sans">
+        <main class="max-w-6xl mx-auto pt-6 px-4">
+            <header class="mb-6">
+                <h1 class="text-center text-2xl font-bold">Solucionador de Puzzle con IA</h1>
+            </header>
+
+            <section>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+                    <form id="solve-form" onsubmit="handleSubmit(event)" class="grid gap-4 bg-gray-800 border border-gray-700 rounded-lg p-4 md:col-span-4 h-full">
+                    <div class="grid grid-cols-1 gap-2">
+                        <label class="text-sm text-gray-300">Subir Imagen</label>
+                        <input id="file-input" name="imagen" type="file" accept="image/*" class="hidden" />
+                        <div class="flex items-center gap-3">
+                            <label for="file-input" id="file-label" class="px-3 py-2 rounded bg-gray-700 hover:bg-gray-600 cursor-pointer text-sm">Seleccionar archivo</label>
+                            <span id="file-name" class="text-sm text-gray-400">Ningún archivo seleccionado</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2">
+                        <label class="text-sm text-gray-300">O URL de Imagen</label>
+                        <input id="url-input" name="image-url" type="text" placeholder="Pega una URL de imagen aquí" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+
+                    <!-- Algorithm selector removed: using default A* on backend requests -->
+
+                    <div class="grid grid-cols-1 gap-1">
+                        <label class="text-sm text-gray-300">Cantidad de Mezclas: <span id="mezclas-val">30</span></label>
+                        <input id="mezclas-range" type="range" value="30" min="1" max="100" class="w-full" />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-1">
+                        <label class="text-sm text-gray-300">Pausa de Animación (s): <span id="pausa-val">0.5</span></label>
+                        <input id="pausa-range" type="range" value="0.5" min="0.1" max="2" step="0.1" class="w-full" />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2">
+                        <label class="text-sm text-gray-300">Semilla Aleatoria (opcional)</label>
+                        <input id="semilla-input" name="semilla" type="number" placeholder="Opcional" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+
+                        <div class="flex gap-3 justify-end">
+                        <button id="reset-button" type="button" onclick="resetForm()" class="hidden px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Limpiar</button>
+                        <button type="submit" class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 inline-flex items-center gap-2">
+                            <!-- play icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M4.5 3.5v13l11-6.5-11-6.5z"/></svg>
+                            <span>Iniciar</span>
+                        </button>
+                    </div>
+                    </form>
+
+                    <!-- Right column wrapper: spinner overlay + results (occupies 2/3) -->
+                    <div class="md:col-span-8 relative h-full">
+                        <!-- Spinner (absolute centered within right column) -->
+                        <div id="spinner" class="absolute inset-0 flex items-center justify-center" style="transition: opacity 240ms ease; display:none; opacity:0; z-index:40;">
+                            <svg class="w-10 h-10 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                        </div>
+
+                        <!-- Results container (fills right column) -->
+                        <div id="results-area" class="mt-6 overflow-hidden md:mt-0 h-full" aria-hidden="true" style="height:0; transition: height 320ms ease, opacity 240ms ease; opacity:0">
+                            <div class="overflow-hidden h-full">
+                        <div id="results-content" x-data="{ formData: { pausa: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5') }, results: { pausa_usada: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5') }, pausaVisual: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5'), displayPausa: '0.5' }" class="bg-gray-800 border border-gray-700 rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-6 items-start h-full">
+                            <!-- Puzzle board (relative container; pieces positioned absolutely) -->
+                            <div class="md:col-start-1 md:col-span-2 flex flex-col items-center">
+                                <div class="w-full flex justify-center">
+                                    <div id="puzzle-board" style="position:relative;" class="bg-gray-900 border border-gray-700 mb-2 mx-auto w-full aspect-square max-w-[480px]"></div>
+                                </div>
+                                <div class="w-full flex justify-center mt-3">
+                                    <div class="w-[300px] flex justify-center items-center gap-4">
+                                        <div class="flex items-center">
+                                            <button id="mix-btn" onclick="handleMix()" class="px-3 py-1 rounded bg-yellow-600 hover:bg-yellow-500" hidden>Mezclar</button>
+                                            <button id="solve-btn" onclick="handleSolve()" class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 ml-2" hidden>Resolver</button>
+                                        </div>
+                                        <div class="text-sm text-gray-400"><span id="display-pausa" class="text-gray-400 text-sm font-medium">Pausa: 0.5s</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stats: A* vs BFS comparison cards (render only when stats available) -->
+                            <template x-if="results && results.stats_data">
+                                <div class="flex flex-col gap-6 w-full mb-8 md:mb-0 md:col-span-1 md:col-start-3">
+                                    <div class="bg-gray-800 border border-green-500/30 rounded-xl p-5 relative overflow-hidden shadow-lg hover:border-green-500/50 transition-colors">
+                                        <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-400 to-green-600"></div>
+                                        <div class="flex items-center justify-between mb-4 pl-2">
+                                            <span class="text-green-400 font-bold text-xl flex items-center gap-2">
+                                                🚀 A* (A-Star)
+                                            </span>
+                                            <span class="text-xs font-mono bg-green-500/10 text-green-400 px-2 py-1 rounded">Heurístico</span>
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-4 text-center divide-x divide-gray-700">
+                                            <div class="px-2">
+                                                <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Tiempo</div>
+                                                <div class="text-white font-mono font-bold text-lg" x-text="results?.stats_data?.astar?.tiempo + 's'"></div>
+                                            </div>
+                                            <div class="px-2">
+                                                <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Estados</div>
+                                                <div class="text-white font-mono font-bold text-lg" x-text="results?.stats_data?.astar?.estados"></div>
+                                            </div>
+                                            <div class="px-2">
+                                                <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Pasos</div>
+                                                <div class="text-white font-mono font-bold text-lg" x-text="results?.stats_data?.astar?.movimientos"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+
+                                    <div class="bg-gray-800 border border-orange-500/30 rounded-xl p-5 relative overflow-hidden shadow-lg hover:border-orange-500/50 transition-colors">
+                                        <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-600"></div>
+                                        <div class="flex items-center justify-between mb-4 pl-2">
+                                            <span class="text-orange-400 font-bold text-xl flex items-center gap-2">
+                                                🌊 BFS (Anchura)
+                                            </span>
+                                            <span class="text-xs font-mono bg-orange-500/10 text-orange-400 px-2 py-1 rounded">Fuerza Bruta</span>
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-4 text-center divide-x divide-gray-700">
+                                            <div class="px-2">
+                                                <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Tiempo</div>
+                                                <div class="text-white font-mono font-bold text-lg" x-text="results?.stats_data?.bfs?.tiempo + 's'"></div>
+                                            </div>
+                                            <div class="px-2">
+                                                <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Estados</div>
+                                                <div class="text-white font-mono font-bold text-lg" x-text="results?.stats_data?.bfs?.estados"></div>
+                                            </div>
+                                            <div class="px-2">
+                                                <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Pasos</div>
+                                                <div class="text-white font-mono font-bold text-lg" x-text="results?.stats_data?.bfs?.movimientos"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <!-- controls moved inside puzzle column to avoid duplicates -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theory section removed from here and moved below the main container to span full viewport width -->
+            </section>
+
+            <!-- Floating theory scroll button (appears when theory expanded) -->
+            <button id="theory-scroll-btn" aria-hidden="true" onclick="scrollToTheory()" class="fixed right-6 bottom-6 bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-full shadow-lg" style="display:none; opacity:0; transition: opacity 200ms ease; z-index:50;">
+                <!-- chevron-up icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M3.293 12.707a1 1 0 001.414 0L10 7.414l5.293 5.293a1 1 0 001.414-1.414l-6-6a1 1 0 00-1.414 0l-6 6a1 1 0 000 1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+
+        </main>
+
+        <!-- Theory section (moved outside main to span full viewport width) -->
+        <div class="max-w-6xl mx-auto w-full bg-transparent">
+            <div class="max-w-full mx-auto pb-6 px-4">
+                <div id="theory-wrapper" class="pt-5 mx-auto">
+                    <button id="theory-toggle" onclick="toggleTheory()" class="block mx-auto text-sm text-indigo-400 hover:text-indigo-300 transition-colors focus:outline-none mb-2">
+                        Ver Explicación Teórica
+                    </button>
+
+                    <div id="theory" aria-hidden="true" class="mt-2 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded p-6 overflow-hidden" style="height:0; transition: height 320ms ease, opacity 240ms ease; opacity:0; display:none">
+
+                        <div id="theory-content" class="space-y-8 text-gray-300 leading-relaxed">
+
+                            <div>
+                                <h2 class="text-2xl font-bold text-white mb-3">¿Cómo funciona esto?</h2>
+                                <p>
+                                    Esta aplicación demuestra cómo un computador "piensa" para resolver un problema complejo. 
+                                    Elige entre dos algoritmos clásicos de Inteligencia Artificial para encontrar el camino más corto 
+                                    desde un estado mezclado hasta la solución.
+                                </p>
+                            </div>
+
+                            <hr class="border-gray-700">
+
+                            <div class="space-y-4">
+                                <h3 class="text-xl font-semibold text-blue-400 flex items-center gap-2">
+                                    1. BFS (Búsqueda en Anchura)
+                                </h3>
+                                <p>
+                                    El <strong>BFS</strong> es el algoritmo de "fuerza bruta". Imagínalo como una onda expansiva en el agua.
+                                </p>
+                                <p>
+                                    Comienza en el estado inicial y explora todas las jugadas posibles a 1 movimiento de distancia. 
+                                    Luego, explora todas las jugadas a 2 movimientos, y así sucesivamente, "nivel por nivel", 
+                                    hasta que aterriza en la solución.
+                                </p>
+                            
+                                <figure class="my-6">
+                                    <img src="{{ url_for('static', filename='assets/bfs.gif') }}" 
+                                         alt="Animación BFS" 
+                                         class="w-full max-w-sm mx-auto rounded-lg shadow-lg border border-gray-700">
+                                    <figcaption class="text-center text-xs text-gray-500 mt-2">
+                                        GIF por Mre, licencia CC BY-SA 3.0
+                                    </figcaption>
+                                </figure>
+                            
+                                <div class="bg-gray-700/50 p-4 rounded-lg text-sm">
+                                    <ul class="list-disc list-inside space-y-1">
+                                        <li><span class="text-green-400 font-semibold">Ventaja:</span> Garantiza encontrar la solución con el mínimo de movimientos posible (óptima).</li>
+                                        <li><span class="text-red-400 font-semibold">Desventaja:</span> Es "ciego". Gasta muchísima memoria explorando caminos inútiles. Para puzzles grandes (4x4), es inviable.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        
+                            <hr class="border-gray-700">
+                        
+                            <div class="space-y-4">
+                                <h3 class="text-xl font-semibold text-purple-400 flex items-center gap-2">
+                                    2. A* (A-Estrella)
+                                </h3>
+                                <p>
+                                    El <strong>A*</strong> es el algoritmo del "explorador inteligente". No explora a ciegas; 
+                                    usa una "brújula" matemática para moverse siempre en la dirección que <em>parece</em> más prometedora.
+                                </p>
+                                <p>
+                                    Usa una <strong>Cola de Prioridad</strong> para evaluar los caminos y elegir el que estima que lo llevará 
+                                    a la solución más rápido. Es dramáticamente más eficiente que BFS.
+                                </p>
+                            
+                                <figure class="my-6">
+                                    <img src="{{ url_for('static', filename='assets/astar.gif') }}" 
+                                         alt="Animación A*" 
+                                         class="w-full max-w-sm mx-auto rounded-lg shadow-lg border border-gray-700">
+                                    <figcaption class="text-center text-xs text-gray-500 mt-2">
+                                        GIF por Mozyss, licencia CC BY-SA 3.0
+                                    </figcaption>
+                                </figure>
+                            
+                                <div class="bg-gray-900 p-6 rounded-xl border border-gray-700 text-center my-6">
+                                    <p class="text-sm text-gray-400 mb-2 uppercase tracking-wider">La Fórmula Mágica</p>
+                                    <p class="text-3xl font-mono font-bold text-white tracking-widest">f(n) = g(n) + h(n)</p>
+                                    
+                                    <div class="mt-4 text-left text-sm space-y-2">
+                                        <p>
+                                            <code class="bg-gray-800 px-1 rounded text-blue-300">g(n)</code> 
+                                            <strong>Costo Real:</strong> Pasos que ya hemos dado desde el inicio.
+                                        </p>
+                                        <p>
+                                            <code class="bg-gray-800 px-1 rounded text-purple-300">h(n)</code> 
+                                            <strong>Heurística:</strong> La estimación inteligente de cuánto falta para llegar.
+                                        </p>
+                                    </div>
+                                </div>
+                            
+                                <h4 class="text-lg font-medium text-white mt-6">La Heurística: Distancia Manhattan</h4>
+                                <p>
+                                    Para que A* funcione, necesitamos una buena estimación (`h`). Usamos la <strong>Distancia Manhattan</strong>.
+                                </p>
+                                <p>
+                                    Es simple: por cada pieza, calculamos cuántos pasos (horizontales + verticales) le faltan para llegar a su lugar correcto, 
+                                    como si no hubiera otras piezas estorbando.
+                                </p>
+                            
+                                <figure class="my-6">
+                                    <img src="{{ url_for('static', filename='assets/manhattan.gif') }}" 
+                                         alt="Distancia Manhattan" 
+                                         class="w-full max-w-xs mx-auto rounded-lg shadow-lg border border-gray-700">
+                                    <figcaption class="text-center text-xs text-gray-500 mt-2">
+                                        Diagrama por amin, Copyrighted free use
+                                    </figcaption>
+                                </figure>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Imperative, DOM-driven implementation
+            let tableroActual = [1,2,3,4,5,6,7,8,0];
+            let movimientosMezcla = [];
+            let movimientosSolucion = [];
+            let velocidadUsuario = 500; // ms default (valor visual/temporal)
+            // pausaGuardada* se inicializa al hacer 'Cargar / Iniciar' y sólo cambia
+            // cuando se vuelve a enviar el formulario. Mientras tanto, las animaciones
+            // deben usar este valor fijo aunque el usuario mueva el slider.
+            let pausaGuardadaMs = null; // milisegundos
+            let pausaGuardadaSec = null; // valor en segundos (string/number)
+            // Token para cancelar animaciones en curso. Incrementar para abortar.
+            let animationToken = 0;
+            // Bandera para bloquear interacción durante animaciones automáticas
+            let isAnimating = false;
+            // Bloquear interacción manual hasta que el usuario mezcle
+            let canInteract = false;
+            // Estado mezclado original recibido del backend (array plano de 9 números)
+            let estadoMezcladoInicial = null;
+            // Métricas de usuario (gamificación)
+            let userMovesCount = 0;
+            let userStartTime = null;
+            let userWon = false;
+            let userTimeElapsed = 0;
+
+            function repaintBoardFromTablero(){
+                const board = document.getElementById('puzzle-board');
+                if (!board) return;
+                const size = 3;
+                const pct = 100 / size; // percent per piece (33.333...)
+                // For each logical position, ensure the piece element is placed accordingly.
+                for(let idx=0; idx<tableroActual.length; idx++){
+                    const n = tableroActual[idx];
+                    const r = Math.floor(idx / size);
+                    const c = idx % size;
+                    const selector = `[data-num="${n}"]`;
+                    const el = board.querySelector(selector);
+                    if (!el) continue;
+                    // temporarily disable transition so reposition is immediate
+                    const prevTrans = el.style.transition;
+                    el.style.transition = 'none';
+                    el.style.left = (c * pct) + '%';
+                    el.style.top = (r * pct) + '%';
+                    el.style.width = pct + '%';
+                    el.style.height = pct + '%';
+                    el.dataset.row = String(r);
+                    el.dataset.col = String(c);
+                    el.id = `piece-${r}-${c}`;
+                    // force reflow then restore transition
+                    // eslint-disable-next-line no-unused-expressions
+                    el.offsetHeight;
+                    el.style.transition = prevTrans || 'all 0.12s linear';
+                }
+            }
+
+            function showSpinner(show){
+                const el = document.getElementById('spinner');
+                if (!el) return;
+                if (show){
+                    // ensure element participates in layout, then fade in
+                    el.style.display = 'flex';
+                    // hide results-area immediately to avoid empty gap while spinner is visible
+                    try {
+                        const area = document.getElementById('results-area');
+                        if (area){
+                            area.dataset._hiddenBySpinner = '1';
+                            area.style.display = 'none';
+                        }
+                    } catch (e) { /* ignore */ }
+                    // force a frame for transition to pick up
+                    requestAnimationFrame(()=>{ el.style.opacity = '1'; });
+                } else {
+                    // fade-out then remove from layout after transition
+                    el.style.opacity = '0';
+                    setTimeout(()=>{
+                        el.style.display = 'none';
+                        // clear hidden-by-spinner marker; do not auto-open results-area here;
+                        // caller (handleSubmit/resetForm) manages showing results when appropriate
+                        try { const area = document.getElementById('results-area'); if (area && area.dataset._hiddenBySpinner) delete area.dataset._hiddenBySpinner; } catch(e){}
+                    }, 260);
+                }
+            }
+
+            // helpers to animate results-area expand/collapse with promises
+            function expandResults(){
+                return new Promise(resolve => {
+                    const area = document.getElementById('results-area');
+                    if (!area) return resolve();
+                    // measure content height
+                    const content = area.querySelector('#results-content');
+                    if (!content) return resolve();
+                    // ensure visible for measurement
+                    // also ensure content opacity is reset so it becomes visible after expand
+                    content.style.opacity = '0';
+                    area.style.opacity = '0';
+                    area.style.height = 'auto';
+                    area.style.display = 'block';
+                    const targetH = content.getBoundingClientRect().height + 32; // padding
+                    area.style.height = '0px';
+                    area.setAttribute('aria-hidden', 'false');
+                    // start transition
+                    requestAnimationFrame(()=>{
+                        area.style.opacity = '1';
+                        area.style.height = targetH + 'px';
+                        // fade content in as area expands
+                        content.style.transition = 'opacity 200ms ease';
+                        content.style.opacity = '1';
+                    });
+                    // resolve after transition
+                    setTimeout(()=>{ area.style.height = 'auto'; resolve(); }, 340);
+                });
+            }
+
+            function collapseResults(){
+                return new Promise(resolve => {
+                    const area = document.getElementById('results-area');
+                    if (!area) return resolve();
+                    const content = area.querySelector('#results-content');
+                    if (!content) return resolve();
+                    const curH = content.getBoundingClientRect().height + 32;
+                    // set explicit height then collapse
+                    area.style.height = curH + 'px';
+                    requestAnimationFrame(()=>{
+                        area.style.opacity = '0';
+                        area.style.height = '0px';
+                    });
+                    setTimeout(()=>{ area.style.display = 'none'; area.setAttribute('aria-hidden', 'true'); resolve(); }, 340);
+                });
+            }
+
+            // Theory expand/collapse and floating button
+            function showTheoryScrollButton(show){
+                const btn = document.getElementById('theory-scroll-btn');
+                if (!btn) return;
+                if (show){
+                    btn.style.display = 'block';
+                    requestAnimationFrame(()=>{ btn.style.opacity = '1'; btn.setAttribute('aria-hidden','false'); });
+                } else {
+                    btn.style.opacity = '0';
+                    btn.setAttribute('aria-hidden','true');
+                    setTimeout(()=>{ btn.style.display = 'none'; }, 220);
+                }
+            }
+
+            function expandTheory(){
+                return new Promise(resolve => {
+                    const area = document.getElementById('theory');
+                    if (!area) return resolve();
+                    const content = document.getElementById('theory-content');
+                    if (!content) return resolve();
+                    // prepare
+                    content.style.opacity = '0';
+                    area.style.opacity = '0';
+                    area.style.height = 'auto';
+                    area.style.display = 'block';
+                    const targetH = content.getBoundingClientRect().height + 32;
+                    area.style.height = '0px';
+                    area.setAttribute('aria-hidden','false');
+                    requestAnimationFrame(()=>{
+                        area.style.opacity = '1';
+                        area.style.height = targetH + 'px';
+                        content.style.transition = 'opacity 200ms ease';
+                        content.style.opacity = '1';
+                    });
+                    setTimeout(()=>{ area.style.height = 'auto'; showTheoryScrollButton(true); resolve(); }, 340);
+                });
+            }
+
+            function collapseTheory(){
+                return new Promise(resolve => {
+                    const area = document.getElementById('theory');
+                    if (!area) return resolve();
+                    const content = document.getElementById('theory-content');
+                    if (!content) return resolve();
+                    const curH = content.getBoundingClientRect().height + 32;
+                    area.style.height = curH + 'px';
+                    requestAnimationFrame(()=>{
+                        area.style.opacity = '0';
+                        area.style.height = '0px';
+                        content.style.opacity = '0';
+                    });
+                    setTimeout(()=>{ area.style.display = 'none'; area.setAttribute('aria-hidden','true'); showTheoryScrollButton(false); resolve(); }, 340);
+                });
+            }
+
+            // Update file-name display when a file is selected (will be wired in initUI)
+
+            async function handleSubmit(e){
+                e.preventDefault();
+                // Cancel any animations currently running and stabilize board visuals
+                animationToken++;
+                try { repaintBoardFromTablero(); } catch (e) { /* ignore */ }
+                const form = document.getElementById('solve-form');
+                const fd = new FormData();
+                const file = document.getElementById('file-input').files[0];
+                const url = document.getElementById('url-input').value.trim();
+                const mez = document.getElementById('mezclas-range').value;
+                const pausa = document.getElementById('pausa-range').value;
+                // Guardar la pausa seleccionada en el momento del submit y fijarla
+                // para las animaciones hasta el próximo submit.
+                pausaGuardadaSec = pausa;
+                pausaGuardadaMs = Math.max(20, Math.round(parseFloat(pausa) * 1000));
+                // Set the visible pausa text to the slider value at submit time (direct DOM write)
+                const displayEl = document.getElementById('display-pausa');
+                if (displayEl) displayEl.textContent = 'Pausa: ' + pausa + 's';
+                const sem = document.getElementById('semilla-input').value;
+                // Algorithm is decided server-side for benchmarks; do not send algorithm here
+
+                if (file) fd.append('imagen', file);
+                else if (url) fd.append('image-url', url);
+                fd.append('cantidad_mezclas', mez);
+                fd.append('pausa', pausa);
+                if (sem) fd.append('semilla', sem);
+
+                try{
+                    const area = document.getElementById('results-area');
+                    const content = document.getElementById('results-content');
+
+                    // If results are visible, fade out the content first
+                    const resultsVisible = area && area.getAttribute('aria-hidden') === 'false';
+                    if (resultsVisible && content){
+                        content.style.transition = 'opacity 200ms ease';
+                        content.style.opacity = '0';
+                        await new Promise(r => setTimeout(r, 220));
+                    }
+
+                    // show spinner (fade-in)
+                    showSpinner(true);
+
+                    const resp = await fetch('/solve', { method: 'POST', body: fd });
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(()=>({}));
+                        throw new Error(err.error || 'Error en el servidor');
+                    }
+                    const data = await resp.json();
+
+                    // hide spinner (fade-out)
+                    showSpinner(false);
+                    // wait for spinner fade out to feel smooth
+                    await new Promise(r => setTimeout(r, 260));
+
+                    // debug: log received data so we can inspect stats in the browser console
+                    // Attach the full response to Alpine's `results` so bindings render correctly
+                    try{
+                        const rc = document.getElementById('results-content');
+                        if (rc && rc.__x && rc.__x.$data){
+                            // assign the full response to Alpine's `results` so bindings update
+                            rc.__x.$data.results = data;
+                            // ensure stats_data exists to satisfy the x-if guard
+                            rc.__x.$data.results.stats_data = data.stats_data || rc.__x.$data.results.stats_data || {};
+                        } else {
+                            // If Alpine didn't initialize its reactive state, render a DOM fallback
+                            try { renderStatsFallback(data); } catch(err){ /* ignore fallback errors */ }
+                        }
+                    }catch(e){ /* ignore */ }
+
+                    // update UI with new puzzle data (board, moves)
+                    iniciarPuzzle(data);
+
+                    // Ensure results-area is restored in layout before attempting any fade-in
+                    try{
+                        const areaNow = document.getElementById('results-area');
+                        if (areaNow){
+                            // if spinner or collapse hid it, restore display so fades/measurements work
+                            if (areaNow.style.display === 'none') areaNow.style.display = 'block';
+                            // ensure the container isn't collapsed to 0 height (reset to auto)
+                            areaNow.style.height = 'auto';
+                            areaNow.setAttribute('aria-hidden', 'false');
+                        }
+                    }catch(e){}
+
+                    // If results were previously visible, fade content back in; otherwise expand area
+                    if (resultsVisible && content){
+                        // ensure content ready
+                        content.style.opacity = '0';
+                        // small frame then fade in
+                        requestAnimationFrame(()=>{ content.style.opacity = '1'; });
+                        await new Promise(r => setTimeout(r, 240));
+                    } else {
+                        await expandResults();
+                    }
+
+                }catch(err){
+                    alert('Ocurrió un error: ' + err.message);
+                    showSpinner(false);
+                }
+            }
+
+            // Removed updateAlgorithmUI: algorithm selector removed from UI; no-op preserved intentionally.
+
+            function updateSliderDisplays(){
+                const pr = document.getElementById('pausa-range');
+                const pv = document.getElementById('pausa-val');
+                const mr = document.getElementById('mezclas-range');
+                const mv = document.getElementById('mezclas-val');
+                if (pv && pr) pv.textContent = pr.value;
+                if (mv && mr) mv.textContent = mr.value;
+            }
+
+            function initUI(){
+                // sliders
+                const pr = document.getElementById('pausa-range');
+                const pv = document.getElementById('pausa-val');
+                const mr = document.getElementById('mezclas-range');
+                const mv = document.getElementById('mezclas-val');
+                if (pr){
+                    pr.addEventListener('input', () => {
+                        if (pv) pv.textContent = pr.value;
+                        velocidadUsuario = Math.max(20, Math.round(pr.value * 1000));
+                        const rc = document.getElementById('results-content');
+                        if (rc && rc.__x && rc.__x.$data && rc.__x.$data.formData) rc.__x.$data.formData.pausa = pr.value;
+                    });
+                }
+                if (mr){
+                    mr.addEventListener('input', () => { if (mv) mv.textContent = mr.value; });
+                }
+                // algorithm selector removed from DOM; no listeners required
+                // file input display
+                const fileInput = document.getElementById('file-input');
+                if (fileInput){
+                    fileInput.addEventListener('change', (ev) => {
+                        const fn = (ev.target.files && ev.target.files[0]) ? ev.target.files[0].name : 'Ningún archivo seleccionado';
+                        const display = document.getElementById('file-name');
+                        if (display) display.textContent = fn;
+                    });
+                }
+
+                // helper to show the reset button when user interacts
+                function mostrarBotonLimpiar(){
+                    const btn = document.getElementById('reset-button');
+                    if (btn) btn.classList.remove('hidden');
+                }
+
+                // register listeners on all form inputs to reveal the clear button
+                const form = document.getElementById('solve-form');
+                if (form){
+                    const inputs = form.querySelectorAll('input, textarea, select');
+                    inputs.forEach(inp => {
+                        // don't attach to the reset button itself
+                        if (inp.id === 'reset-button') return;
+                        inp.addEventListener('input', mostrarBotonLimpiar);
+                        inp.addEventListener('change', mostrarBotonLimpiar);
+                    });
+                    // ensure display-pausa is set at the exact moment of form submit (defensive)
+                    form.addEventListener('submit', () => {
+                        const pausaNow = document.getElementById('pausa-range')?.value;
+                        const displayEl = document.getElementById('display-pausa');
+                        if (displayEl && pausaNow !== undefined) displayEl.textContent = 'Pausa: ' + pausaNow + 's';
+                    });
+                }
+
+                // initialize displays
+                updateSliderDisplays();
+                // set the displayed pausa to current slider value on load
+                try {
+                    const displayElInit = document.getElementById('display-pausa');
+                    const pausaNowInit = document.getElementById('pausa-range')?.value;
+                    if (displayElInit && pausaNowInit !== undefined) displayElInit.textContent = 'Pausa: ' + pausaNowInit + 's';
+                } catch (e) {
+                    // defensive: ignore
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', initUI);
+
+            function iniciarPuzzle(data){
+                // store moves
+                movimientosMezcla = data.movimientos_mezcla || [];
+                movimientosSolucion = data.movimientos_solucion || [];
+
+                // always draw solved board (1..8,0)
+                tableroActual = [1,2,3,4,5,6,7,8,0];
+                const board = document.getElementById('puzzle-board');
+                if (!board) return;
+                // Crear/actualizar hint inicial para guiar al usuario
+                let hint = document.getElementById('pre-mix-hint');
+                if (!hint){
+                    hint = document.createElement('div');
+                    hint.id = 'pre-mix-hint';
+                    hint.className = 'absolute inset-0 flex items-center justify-center bg-indigo-900/40 text-indigo-100 text-center px-4';
+                    hint.style.zIndex = '25';
+                    hint.innerHTML = `
+                        <div class="space-y-2">
+                            <div class="text-lg font-semibold">Antes de jugar, hacé clic en "Mezclar"</div>
+                            <div class="text-xs text-indigo-200">Luego podés mover las piezas para intentar resolver el puzzle.</div>
+                        </div>`;
+                    board.appendChild(hint);
+                } else {
+                    hint.style.display = 'flex';
+                }
+                // Asegurar que el tablero no acepte interacción manual todavía
+                canInteract = false;
+                // Preservar / recrear overlay de victoria
+                let overlay = document.getElementById('win-overlay');
+                if (!overlay){
+                    overlay = document.createElement('div');
+                    overlay.id = 'win-overlay';
+                    overlay.className = 'absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center px-4';
+                    overlay.style.display = 'none';
+                    overlay.style.zIndex = '30';
+                    overlay.innerHTML = `
+                        <div class="space-y-3">
+                            <div class="text-2xl font-bold">¡Felicidades!</div>
+                            <div class="text-sm">
+                                <div>Tiempo: <span id="win-time">0</span> s</div>
+                                <div>Movimientos: <span id="win-moves">0</span></div>
+                            </div>
+                            <button class="mt-2 px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-500" onclick="jugarDeNuevo()">Jugar de nuevo</button>
+                        </div>`;
+                    board.appendChild(overlay);
+                }
+                // Eliminar sólo piezas previas (divs con class 'piece') para no perder overlay
+                Array.from(board.querySelectorAll('.piece')).forEach(el => el.remove());
+                const size = 3;
+                const pct = 100 / size; // percent per piece (33.333...)
+                const stepPos = (size > 1) ? (100 / (size - 1)) : 0; // background position steps (0,50,100)
+
+                const imgBase64 = data.imagen_skin_base64 ? (data.imagen_skin_base64.startsWith('data:') ? data.imagen_skin_base64 : ('data:image/png;base64,' + data.imagen_skin_base64)) : null;
+
+                // Guardar estado mezclado original (aplanado si viene como matriz)
+                try {
+                    const est = data.estado_inicial_numerico;
+                    if (Array.isArray(est)) {
+                        // Si es matriz 3x3, aplanar; si ya es plano, usar tal cual
+                        estadoMezcladoInicial = (Array.isArray(est[0])) ? est.flat() : [...est];
+                    } else {
+                        estadoMezcladoInicial = null;
+                    }
+                } catch(e) { estadoMezcladoInicial = null; }
+
+                // Resetear métricas de usuario y ocultar overlay de victoria
+                userMovesCount = 0;
+                userStartTime = null;
+                userWon = false;
+                userTimeElapsed = 0;
+                const overlayInit = document.getElementById('win-overlay');
+                if (overlayInit) overlayInit.style.display = 'none';
+
+                for(let i=0;i<9;i++){
+                    const r = Math.floor(i/3);
+                    const c = i % 3;
+                    const n = tableroActual[i];
+                    const tile = document.createElement('div');
+                    tile.className = 'piece border border-gray-800' + (n !== 0 ? ' cursor-pointer' : '');
+                    tile.style.position = 'absolute';
+                    tile.style.width = pct + '%';
+                    tile.style.height = pct + '%';
+                    tile.style.left = (c * pct) + '%';
+                    tile.style.top = (r * pct) + '%';
+                    tile.style.transition = 'all 0.12s linear';
+                    tile.style.boxSizing = 'border-box';
+                    tile.dataset.num = String(n);
+                    tile.dataset.row = String(r);
+                    tile.dataset.col = String(c);
+                    tile.id = `piece-${r}-${c}`;
+
+                    if (n !== 0 && imgBase64){
+                        const origIndex = n - 1;
+                        const origR = Math.floor(origIndex / size);
+                        const origC = origIndex % size;
+                        tile.style.backgroundImage = `url("${imgBase64}")`;
+                        tile.style.backgroundSize = '300% 300%';
+                        tile.style.backgroundPosition = `${origC * stepPos}% ${origR * stepPos}%`;
+                        tile.style.backgroundRepeat = 'no-repeat';
+                        // Habilitar clic para intentar mover esta pieza
+                        tile.addEventListener('click', () => {
+                            const rr = parseInt(tile.dataset.row, 10);
+                            const cc = parseInt(tile.dataset.col, 10);
+                            intentarMover(rr, cc);
+                        });
+                    } else {
+                        tile.style.background = 'transparent';
+                    }
+
+                    board.appendChild(tile);
+                }
+
+                // show results controls (we don't directly toggle the area display here;
+                // the caller manages expand/collapse animations)
+                const mixBtn = document.getElementById('mix-btn');
+                const solveBtn = document.getElementById('solve-btn');
+                if (mixBtn) mixBtn.hidden = false;
+                if (solveBtn) solveBtn.hidden = true;
+
+                // update stats: delegate rendering to Alpine by attaching stats_data
+                // (avoid manipulating removed DOM nodes like `stat-estados`)
+                // We'll set `results.stats_data` later when wiring Alpine below.
+
+                // wire pausa slider display
+                const pr = document.getElementById('pausa-range');
+                const pv = document.getElementById('pausa-val');
+                if (pv) pv.textContent = pr.value;
+                pr.oninput = () => { if (pv) pv.textContent = pr.value; velocidadUsuario = Math.max(20, Math.round(pr.value * 1000));
+                    const rc = document.getElementById('results-content');
+                    if (rc && rc.__x && rc.__x.$data){
+                        if (rc.__x.$data.formData) rc.__x.$data.formData.pausa = pr.value;
+                    }
+                };
+                velocidadUsuario = Math.max(20, Math.round(pr.value * 1000));
+                // ensure Alpine value synced immediately and store the pausa used for this result
+                const rcInit = document.getElementById('results-content');
+                if (rcInit && rcInit.__x && rcInit.__x.$data){
+                    if (rcInit.__x.$data.formData) rcInit.__x.$data.formData.pausa = pr.value;
+                    if (!rcInit.__x.$data.results) rcInit.__x.$data.results = {};
+                    // Attach the stats data to Alpine's `results` so the template bindings render it.
+                    rcInit.__x.$data.results.stats_data = data.stats_data || rcInit.__x.$data.results.stats_data || {};
+                    // Mostrar la pausa que fue fijada en el submit (`pausaGuardadaSec`) si existe,
+                    // de lo contrario mostrar el valor actual del slider.
+                    rcInit.__x.$data.results.pausa_usada = (pausaGuardadaSec !== null) ? pausaGuardadaSec : pr.value;
+                }
+
+                // wire mezclas display
+                const mr = document.getElementById('mezclas-range');
+                const mv = document.getElementById('mezclas-val');
+                if (pv) pv.textContent = pr.value;
+                mr.oninput = () => { if (mv) mv.textContent = mr.value; };
+            }
+
+            const DIR = {
+                'ARRIBA': [-1,0], 'ABAJO': [1,0], 'IZQUIERDA': [0,-1], 'DERECHA': [0,1],
+                'UP': [-1,0], 'DOWN':[1,0], 'LEFT':[0,-1], 'RIGHT':[0,1]
+            };
+
+            // Solicitar nuevo puzzle y mezclar automáticamente (nuevo random backend)
+            async function jugarDeNuevo(){
+                if (isAnimating) return;
+                // Ocultar overlay de victoria
+                const overlay = document.getElementById('win-overlay');
+                if (overlay) overlay.style.display = 'none';
+                userMovesCount = 0; userStartTime = null; userWon = false; userTimeElapsed = 0;
+                // Asegurar que el tablero y controles vuelvan a estar interactivos
+                try {
+                    const board = document.getElementById('puzzle-board');
+                    if (board) board.style.pointerEvents = '';
+                    const mixBtn = document.getElementById('mix-btn');
+                    const solveBtn = document.getElementById('solve-btn');
+                    const resetBtn = document.getElementById('reset-button');
+                    if (mixBtn) { mixBtn.disabled = false; mixBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                    if (solveBtn) { solveBtn.disabled = false; solveBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                    if (resetBtn) { resetBtn.disabled = false; resetBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                } catch(e){}
+                const fd = new FormData();
+                const fileEl = document.getElementById('file-input');
+                const urlEl = document.getElementById('url-input');
+                const mezEl = document.getElementById('mezclas-range');
+                const pausaEl = document.getElementById('pausa-range');
+                const semEl = document.getElementById('semilla-input');
+                const file = fileEl?.files[0];
+                const url = urlEl?.value?.trim();
+                const mez = mezEl?.value || '30';
+                const pausa = pausaEl?.value || '0.5';
+                const sem = semEl?.value || '';
+                if (file) fd.append('imagen', file); else if (url) fd.append('image-url', url);
+                fd.append('cantidad_mezclas', mez);
+                fd.append('pausa', pausa);
+                if (sem) fd.append('semilla', sem);
+                try {
+                    showSpinner(true);
+                    const resp = await fetch('/solve', { method: 'POST', body: fd });
+                    if (!resp.ok) throw new Error('Error al solicitar nuevo puzzle');
+                    const data = await resp.json();
+                    showSpinner(false);
+                    await new Promise(r=>setTimeout(r,200));
+                    iniciarPuzzle(data);
+                    // Asegurar que el área de resultados esté visible antes de animar
+                    try { await expandResults(); } catch(e) {}
+                    // Ejecutar mezcla automáticamente (usa movimientosMezcla del nuevo puzzle)
+                    await handleMix();
+                } catch(e){
+                    showSpinner(false);
+                    console.error(e);
+                    alert('No se pudo reiniciar el puzzle: ' + e.message);
+                }
+            }
+
+            async function animar(movimientos, velocidad){
+                if (!movimientos || !movimientos.length) return;
+                const myToken = ++animationToken; // capture token for this run
+                // Bloquear interacción durante animación automática
+                isAnimating = true;
+                const board = document.getElementById('puzzle-board');
+                // Deshabilitar interacción en el tablero y botones mientras anima
+                if (board) board.style.pointerEvents = 'none';
+                try {
+                    const mixBtn = document.getElementById('mix-btn');
+                    const solveBtn = document.getElementById('solve-btn');
+                    const resetBtn = document.getElementById('reset-button');
+                    if (mixBtn) { mixBtn.disabled = true; mixBtn.classList.add('opacity-50','cursor-not-allowed'); }
+                    if (solveBtn) { solveBtn.disabled = true; solveBtn.classList.add('opacity-50','cursor-not-allowed'); }
+                    if (resetBtn) { resetBtn.disabled = true; resetBtn.classList.add('opacity-50','cursor-not-allowed'); }
+                } catch(e){}
+                const size = 3;
+                const pct = 100 / size; // percent per piece (33.333...)
+
+                for(const mv of movimientos){
+                    // Abort if another animation started
+                    if (myToken !== animationToken) return;
+                    const key = String(mv).toUpperCase();
+                    const delta = DIR[key];
+                    if (!delta) continue;
+
+                    const blankIndex = tableroActual.indexOf(0);
+                    const br = Math.floor(blankIndex / size);
+                    const bc = blankIndex % size;
+                    const tr = br + delta[0];
+                    const tc = bc + delta[1];
+                    if (tr < 0 || tr >= size || tc < 0 || tc >= size) continue;
+
+                    const targetId = `piece-${tr}-${tc}`;
+                    const tileEl = document.getElementById(targetId);
+                    const blankEl = document.querySelector('[data-num="0"]');
+                    if (!tileEl || !blankEl) continue;
+
+                    // animate positions: swap their left/top
+                    const blankLeft = bc * pct;
+                    const blankTop = br * pct;
+                    const tileLeft = tc * pct;
+                    const tileTop = tr * pct;
+
+                    // move tile into blank
+
+                    // move tile into blank
+                    tileEl.style.left = blankLeft + '%';
+                    tileEl.style.top = blankTop + '%';
+                    // move blank into tile's previous spot
+                    blankEl.style.left = tileLeft + '%';
+                    blankEl.style.top = tileTop + '%';
+
+                    // wait for visual transition, but allow abort during wait
+                    await new Promise(r => setTimeout(r, velocidad));
+                    if (myToken !== animationToken) {
+                        // If aborted mid-wait, stabilize board to logical positions
+                        repaintBoardFromTablero();
+                        isAnimating = false;
+                        // Restaurar interacción si se aborta
+                        if (board) board.style.pointerEvents = '';
+                        try {
+                            const mixBtn = document.getElementById('mix-btn');
+                            const solveBtn = document.getElementById('solve-btn');
+                            const resetBtn = document.getElementById('reset-button');
+                            if (mixBtn) { mixBtn.disabled = false; mixBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                            if (solveBtn) { solveBtn.disabled = false; solveBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                            if (resetBtn) { resetBtn.disabled = false; resetBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                        } catch(e){}
+                        return;
+                    }
+
+                    // update logical tableroActual (swap indices)
+                    const targetIndex = tr * size + tc;
+                    tableroActual[blankIndex] = tableroActual[targetIndex];
+                    tableroActual[targetIndex] = 0;
+
+                    // update datasets and ids to reflect new positions
+                    // tile moved to blank's row/col (br,bc)
+                    tileEl.dataset.row = String(br);
+                    tileEl.dataset.col = String(bc);
+                    tileEl.id = `piece-${br}-${bc}`;
+                    // blank moved to tr,tc
+                    blankEl.dataset.row = String(tr);
+                    blankEl.dataset.col = String(tc);
+                    blankEl.id = `piece-${tr}-${tc}`;
+                }
+                // Animación terminada, permitir interacción
+                isAnimating = false;
+                // Restaurar interacción
+                if (board) board.style.pointerEvents = '';
+                try {
+                    const mixBtn = document.getElementById('mix-btn');
+                    const solveBtn = document.getElementById('solve-btn');
+                    const resetBtn = document.getElementById('reset-button');
+                    if (mixBtn) { mixBtn.disabled = false; mixBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                    if (solveBtn) { solveBtn.disabled = false; solveBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                    if (resetBtn) { resetBtn.disabled = false; resetBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+                } catch(e){}
+            }
+
+            // Intentar mover una pieza manualmente si es adyacente al vacío
+            async function intentarMover(r, c){
+                // Bloquear si hay animación automática en curso
+                if (isAnimating || userWon || !canInteract) return;
+
+                const size = 3;
+                const pct = 100 / size;
+
+                const blankIndex = tableroActual.indexOf(0);
+                const br = Math.floor(blankIndex / size);
+                const bc = blankIndex % size;
+
+                // Ignorar si se clickea el vacío
+                if (r === br && c === bc) return;
+
+                const distManhattan = Math.abs(r - br) + Math.abs(c - bc);
+                if (distManhattan !== 1) return; // sólo movimientos válidos
+
+                const tileId = `piece-${r}-${c}`;
+                const tileEl = document.getElementById(tileId);
+                const blankEl = document.querySelector('[data-num="0"]');
+                if (!tileEl || !blankEl) return;
+
+                const tileLeft = c * pct;
+                const tileTop = r * pct;
+                const blankLeft = bc * pct;
+                const blankTop = br * pct;
+
+                // Animación breve de intercambio
+                tileEl.style.left = blankLeft + '%';
+                tileEl.style.top = blankTop + '%';
+                blankEl.style.left = tileLeft + '%';
+                blankEl.style.top = tileTop + '%';
+
+                await new Promise(rsv => setTimeout(rsv, 120));
+
+                // Actualizar estado lógico
+                const targetIndex = r * size + c;
+                tableroActual[blankIndex] = tableroActual[targetIndex];
+                tableroActual[targetIndex] = 0;
+
+                // Actualizar datasets e ids
+                tileEl.dataset.row = String(br);
+                tileEl.dataset.col = String(bc);
+                tileEl.id = `piece-${br}-${bc}`;
+                blankEl.dataset.row = String(r);
+                blankEl.dataset.col = String(c);
+                blankEl.id = `piece-${r}-${c}`;
+
+                // Primer movimiento: iniciar cronómetro
+                if (userStartTime === null) userStartTime = Date.now();
+                userMovesCount += 1;
+
+                // Check victoria
+                const resuelto = [1,2,3,4,5,6,7,8,0];
+                const gano = tableroActual.length === resuelto.length && tableroActual.every((v,i)=>v===resuelto[i]);
+                if (gano){
+                    userWon = true;
+                    userTimeElapsed = userStartTime ? Math.round((Date.now() - userStartTime)/1000) : 0;
+                    const overlay = document.getElementById('win-overlay');
+                    const tEl = document.getElementById('win-time');
+                    const mEl = document.getElementById('win-moves');
+                    if (tEl) tEl.textContent = String(userTimeElapsed);
+                    if (mEl) mEl.textContent = String(userMovesCount);
+                    if (overlay) overlay.style.display = 'flex';
+                    // Asegurar texto actualizado (por si overlay no existía antes)
+                    const tEl2 = document.getElementById('win-time');
+                    const mEl2 = document.getElementById('win-moves');
+                    if (tEl2) tEl2.textContent = String(userTimeElapsed);
+                    if (mEl2) mEl2.textContent = String(userMovesCount);
+                    const board = document.getElementById('puzzle-board');
+                    // No deshabilitar pointer-events del contenedor, para que el botón del overlay sea clickeable
+                    if (board) board.style.pointerEvents = '';
+                }
+                try { console.log('Movimiento válido'); } catch(e){}
+            }
+
+            // Fallback renderer: if Alpine is not available/initialized, inject the
+            // comparison cards directly into the DOM so users still see stats.
+            function renderStatsFallback(data){
+                // Remove any previous fallback
+                const prev = document.getElementById('stats-fallback');
+                if (prev) prev.remove();
+
+                const stats = (data && data.stats_data) ? data.stats_data : {};
+                const astar = stats.astar || {};
+                const bfs = stats.bfs || {};
+
+                const container = document.createElement('div');
+                container.id = 'stats-fallback';
+                container.className = 'w-full mb-8 md:col-span-2 md:col-start-3';
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 gap-2 w-full">
+                        <div class="bg-gray-800 border border-green-500/30 rounded-xl p-5 relative overflow-hidden shadow-lg hover:border-green-500/50 transition-colors">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-400 to-green-600"></div>
+                            <div class="flex items-center justify-between mb-4 pl-2">
+                                <span class="text-green-400 font-bold text-xl flex items-center gap-2">🚀 A*</span>
+                                <span class="text-xs font-mono bg-green-500/10 text-green-400 px-2 py-1 rounded">Heurístico</span>
+                            </div>
+                            <div class="grid grid-cols-3 md:grid-cols-5 gap-2 text-center divide-x divide-gray-700">
+                                <div class="md:col-start-1 md:col-span-2 px-1"><div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Tiempo</div><div class="text-white font-mono font-bold text-md">${(astar.tiempo ?? 0)}s</div></div>
+                                <div class="md:col-start-3 md:col-span-2 px-1"><div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Estados</div><div class="text-white font-mono font-bold text-md">${(astar.estados ?? 0)}</div></div>
+                                <div class="md:col-start-5 px-1"><div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Pasos</div><div class="text-white font-mono font-bold text-md">${(astar.movimientos ?? 0)}</div></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-800 border border-orange-500/30 rounded-xl p-5 relative overflow-hidden shadow-lg hover:border-orange-500/50 transition-colors">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-orange-400 to-orange-600"></div>
+                            <div class="flex items-center justify-between mb-4 pl-2">
+                                <span class="text-orange-400 font-bold text-xl flex items-center gap-2">🌊 BFS</span>
+                                <span class="text-xs font-mono bg-orange-500/10 text-orange-400 px-2 py-1 rounded">Fuerza Bruta</span>
+                            </div>
+                            <div class="grid grid-cols-3 md:grid-cols-5 gap-2 text-center divide-x divide-gray-700">
+                                <div class="md:col-start-1 md:col-span-2 px-1"><div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Tiempo</div><div class="text-white font-mono font-bold text-md">${(bfs.tiempo ?? 0)}s</div></div>
+                                <div class="md:col-start-3 md:col-span-2 px-1"><div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Estados</div><div class="text-white font-mono font-bold text-md">${(bfs.estados ?? 0)}</div></div>
+                                <div class="md:col-start-5 px-1"><div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Pasos</div><div class="text-white font-mono font-bold text-md">${(bfs.movimientos ?? 0)}</div></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Insert into results-content in the right-hand column
+                const rc = document.getElementById('results-content');
+                if (rc) rc.appendChild(container);
+            }
+
+            async function handleMix(){
+                // linear flow: hide mix, animate mix moves, then show solve
+                document.getElementById('mix-btn').hidden = true;
+                // Restablecer tablero al estado resuelto antes de mezclar
+                tableroActual = [1,2,3,4,5,6,7,8,0];
+                try { repaintBoardFromTablero(); } catch(e){}
+                // Reset métricas usuario y ocultar overlay
+                userMovesCount = 0;
+                userStartTime = null;
+                userWon = false;
+                userTimeElapsed = 0;
+                const overlayMix = document.getElementById('win-overlay');
+                if (overlayMix) overlayMix.style.display = 'none';
+                const boardMix = document.getElementById('puzzle-board');
+                if (boardMix) boardMix.style.pointerEvents = '';
+                // Ocultar hint y habilitar interacción manual una vez mezclado
+                const hint = document.getElementById('pre-mix-hint');
+                if (hint) hint.style.display = 'none';
+                canInteract = true;
+                await animar(movimientosMezcla, 50);
+                document.getElementById('solve-btn').hidden = false;
+            }
+
+            async function handleSolve(){
+                document.getElementById('solve-btn').hidden = true;
+                // Use the pausa fijada en el submit if present; otherwise fallback to
+                // the current velocidadUsuario (from slider).
+                const usoVel = (pausaGuardadaMs !== null) ? pausaGuardadaMs : velocidadUsuario;
+                // Restablecer tablero al estado mezclado original antes de resolver
+                if (estadoMezcladoInicial && Array.isArray(estadoMezcladoInicial) && estadoMezcladoInicial.length === 9) {
+                    tableroActual = [...estadoMezcladoInicial];
+                    try { repaintBoardFromTablero(); } catch(e){}
+                }
+                await animar(movimientosSolucion, usoVel);
+                // Reemplazamos el pop-up por mostrar el botón Limpiar para reiniciar
+                const clear = document.getElementById('reset-button');
+                if (clear) clear.classList.remove('hidden');
+                document.getElementById('mix-btn').hidden = false;
+            }
+
+            function resetForm(){
+                // reset native form values
+                const form = document.getElementById('solve-form');
+                if (form) form.reset();
+
+                // Reset sliders to defaults and update their display spans
+                const mr = document.getElementById('mezclas-range');
+                const mv = document.getElementById('mezclas-val');
+                const pr = document.getElementById('pausa-range');
+                const pv = document.getElementById('pausa-val');
+                if (mr){ mr.value = '30'; if (mv) mv.textContent = '30'; }
+                if (pr){ pr.value = '0.5'; if (pv) pv.textContent = '0.5'; velocidadUsuario = Math.max(20, Math.round(pr.value * 1000));
+                    const rc = document.getElementById('results-content'); if (rc && rc.__x && rc.__x.$data && rc.__x.$data.formData) rc.__x.$data.formData.pausa = pr.value;
+                    // Clear the stored pausa so subsequent 'Resolver' won't reuse old value
+                    pausaGuardadaMs = null;
+                    pausaGuardadaSec = null;
+                }
+
+                // Reset file input display and clear the actual file input so same file can be reselected
+                const fileDisplay = document.getElementById('file-name');
+                if (fileDisplay) fileDisplay.textContent = 'Ningún archivo seleccionado';
+                const fileInput = document.getElementById('file-input');
+                if (fileInput) fileInput.value = '';
+
+                // Algorithm selector removed; nothing to reset here.
+
+                // Hide results area and clear board visuals (animate collapse)
+                const results = document.getElementById('results-area');
+                const board = document.getElementById('puzzle-board');
+                // Fade out content then collapse
+                (async ()=>{
+                    const content = document.getElementById('results-content');
+                    if (content){
+                        content.style.transition = 'opacity 200ms ease';
+                        content.style.opacity = '0';
+                        await new Promise(r => setTimeout(r, 220));
+                    }
+                    await collapseResults();
+                    if (board) board.innerHTML = '';
+                })();
+                // hide the reset button again after cleaning
+                const resetBtn = document.getElementById('reset-button');
+                if (resetBtn) resetBtn.classList.add('hidden');
+                // reset displayed pausa text to default
+                const displayEl = document.getElementById('display-pausa');
+                if (displayEl) displayEl.textContent = 'Pausa: 0.5s';
+            }
+            
+            async function toggleTheory(){
+                const area = document.getElementById('theory');
+                if (!area) return;
+                const isHidden = area.getAttribute('aria-hidden') === 'true' || area.style.display === 'none';
+                if (isHidden){
+                    await expandTheory();
+                } else {
+                    await collapseTheory();
+                }
+            }
+
+            function scrollToTheory(){
+                const btn = document.getElementById('theory-toggle');
+                if (!btn) return;
+                // Scroll so the toggle button is centered/visible, allowing the user to collapse the section
+                btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // optionally move keyboard focus to the toggle so keyboard users can act quickly
+                try { btn.focus({preventScroll:true}); } catch(e){}
+            }
+        </script>
+    </body>
+</html>
