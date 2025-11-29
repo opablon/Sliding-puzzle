@@ -9,6 +9,7 @@ Aplicación web Full-Stack que resuelve rompecabezas deslizantes (Sliding Puzzle
 * **Frontend:** * **HTML5** (Single Page Application).
     * **Tailwind CSS** (vía CDN) para estilos y responsividad.
     * **Alpine.js** (vía CDN) para manejo de estado, reactividad y transiciones.
+    * **Tooltips Accesibles:** Íconos “i” con ayudas contextuales (hover/focus/click) posicionados en `body` para evitar recortes.
 * **Despliegue:** Docker en Hugging Face Spaces.
 * **Control de Versiones:** Git + Git LFS.
 
@@ -41,11 +42,15 @@ Aplicación web Full-Stack que resuelve rompecabezas deslizantes (Sliding Puzzle
         * `userStartTime`: Timestamp (ms) del primer movimiento manual.
         * `userWon`: Bandera booleana indicando si el usuario resolvió manualmente.
         * `userTimeElapsed`: Tiempo en segundos desde `userStartTime` hasta victoria.
+        * Tarjeta UI “Tu Partida” (DOM: `#user-time-card`, `#user-moves-card`): se resetea al iniciar y se actualiza en cada movimiento y al ganar.
 * **Lógica de Animación:**
     * `animatePuzzle(moves)`: Función asíncrona que ejecuta cambios visuales secuenciales en el tablero.
  * **Lógica de Interacción Manual:**
      * `intentarMover(r,c)`: Valida adyacencia al vacío, ejecuta intercambio y actualiza métricas. Detecta victoria comparando el estado con `[1,2,3,4,5,6,7,8,0]`.
      * Overlay de Victoria: `#win-overlay` se muestra al ganar, bloquea interacción y expone tiempo y movimientos.
+    * **Tooltips de Ayuda:** Íconos “i” junto a labels y sliders del panel izquierdo y al lado de `#display-pausa` en el panel derecho.
+    * **Botón Limpiar:** Se muestra siempre tras “Iniciar” (incluso con imagen por defecto) para reiniciar la sesión.
+    * **Layout/Animación del Panel Derecho:** La función `expandResults()` iguala la altura al panel izquierdo y mantiene la altura fija tras la transición; contenido centrado verticalmente.
 
 ## 4. Reglas de Negocio y Limitaciones
 1.  **Tamaño del Puzzle:** Forzado a **3x3** en el backend para evitar timeouts de servidor en entornos gratuitos (Hugging Face Spaces).
@@ -64,3 +69,4 @@ Aplicación web Full-Stack que resuelve rompecabezas deslizantes (Sliding Puzzle
     5.  **Consistencia de estados:** Al iniciar "Mezclar" se restablece el tablero al **estado resuelto** inmediatamente para animar la mezcla desde un estado conocido.
     6.  **Victoria Manual:** Si el usuario resuelve manualmente (clicks), se muestra overlay con tiempo y movimientos y se deshabilita el tablero hasta un nuevo "Mezclar".
 * **Visualización:** El tablero es el protagonista central. Los controles aparecen/desaparecen según el estado.
+* **Accesibilidad:** tooltips con `aria-label` y soporte de foco/blur; click fuera para cerrar. Posicionamiento dinámico evitando corte inferior.

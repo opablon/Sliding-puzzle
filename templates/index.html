@@ -87,7 +87,7 @@
                         <!-- Results container (fills right column) -->
                         <div id="results-area" class="mt-6 overflow-hidden md:mt-0 h-full" aria-hidden="true" style="height:0; transition: height 320ms ease, opacity 240ms ease; opacity:0">
                             <div class="overflow-hidden h-full">
-                        <div id="results-content" x-data="{ formData: { pausa: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5') }, results: { pausa_usada: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5') }, pausaVisual: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5'), displayPausa: '0.5' }" class="bg-gray-800 border border-gray-700 rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-6 items-start h-full">
+                        <div id="results-content" x-data="{ formData: { pausa: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5') }, results: { pausa_usada: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5') }, pausaVisual: (document.getElementById('pausa-range') ? document.getElementById('pausa-range').value : '0.5'), displayPausa: '0.5' }" class="bg-gray-800 border border-gray-700 rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-6 items-center h-full">
                             <!-- Puzzle board (relative container; pieces positioned absolutely) -->
                             <div class="md:col-start-1 md:col-span-2 flex flex-col items-center">
                                 <div class="w-full flex justify-center">
@@ -109,7 +109,7 @@
 
                             <!-- Stats: A* vs BFS comparison cards (render only when stats available) -->
                             <template x-if="results && results.stats_data">
-                                <div class="flex flex-col gap-6 w-full mb-8 md:mb-0 md:col-span-1 md:col-start-3">
+                                <div class="flex flex-col gap-6 w-full mb-8 md:mb-0 md:col-span-2 md:col-start-3">
                                     <div class="bg-gray-800 border border-green-500/30 rounded-xl p-5 relative overflow-hidden shadow-lg hover:border-green-500/50 transition-colors">
                                         <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-400 to-green-600"></div>
                                         <div class="flex items-center justify-between mb-4 pl-2">
@@ -161,6 +161,23 @@
                                     <p id="stats-inline-help" class="text-xs text-gray-400 mt-1 leading-tight">A*: usa heurística (Manhattan) y suele ser más rápido. BFS: explora en amplitud; garantiza solución mínima pero visita más estados.</p>
                                         <div class="flex items-center justify-end">
                                             <button type="button" id="stats-hint-btn" aria-label="Ayuda estadísticas" data-tooltip="A*: heurístico (Manhattan), rápido y eficiente. BFS: fuerza bruta, garantiza pasos mínimos pero explora muchos más estados." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">i</button>
+                                        </div>
+                                        <!-- Tarjeta pequeña de métricas del usuario -->
+                                        <div class="bg-gray-800 border border-indigo-500/30 rounded-xl px-4 py-3 relative overflow-hidden shadow-md hover:border-indigo-500/50 transition-colors">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="text-indigo-300 font-semibold text-sm flex items-center gap-2">⏱️ Tu Partida</span>
+                                                <span class="text-xs font-mono bg-indigo-500/10 text-indigo-300 px-2 py-1 rounded">Live</span>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-3 text-center">
+                                                <div>
+                                                    <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Tiempo</div>
+                                                    <div id="user-time-card" class="text-white font-mono font-bold text-base">0s</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Movimientos</div>
+                                                    <div id="user-moves-card" class="text-white font-mono font-bold text-base">0</div>
+                                                </div>
+                                            </div>
                                         </div>
                                 </div>
                             </template>
@@ -390,13 +407,18 @@
                     // measure content height
                     const content = area.querySelector('#results-content');
                     if (!content) return resolve();
+                    // calcular altura objetivo: igualar al panel de configuración (izquierda) si es mayor
+                    const leftPanel = document.getElementById('solve-form');
+                    let targetH;
                     // ensure visible for measurement
                     // also ensure content opacity is reset so it becomes visible after expand
                     content.style.opacity = '0';
                     area.style.opacity = '0';
                     area.style.height = 'auto';
                     area.style.display = 'block';
-                    const targetH = content.getBoundingClientRect().height + 32; // padding
+                    const contentH = content.getBoundingClientRect().height + 32; // padding
+                    const leftH = leftPanel ? (leftPanel.getBoundingClientRect().height) : 0;
+                    targetH = Math.max(contentH, leftH);
                     area.style.height = '0px';
                     area.setAttribute('aria-hidden', 'false');
                     // start transition
@@ -407,8 +429,8 @@
                         content.style.transition = 'opacity 200ms ease';
                         content.style.opacity = '1';
                     });
-                    // resolve after transition
-                    setTimeout(()=>{ area.style.height = 'auto'; resolve(); }, 340);
+                    // mantener altura fija para evitar salto y centrar contenido verticalmente
+                    setTimeout(()=>{ /* mantener height fija */ resolve(); }, 340);
                 });
             }
 
@@ -580,6 +602,12 @@
                     } else {
                         await expandResults();
                     }
+
+                    // Mostrar siempre el botón Limpiar tras iniciar (incluso con imagen por defecto)
+                    try {
+                        const resetBtn = document.getElementById('reset-button');
+                        if (resetBtn) resetBtn.classList.remove('hidden');
+                    } catch (e) { /* ignore */ }
 
                 }catch(err){
                     alert('Ocurrió un error: ' + err.message);
@@ -807,6 +835,13 @@
                 userTimeElapsed = 0;
                 const overlayInit = document.getElementById('win-overlay');
                 if (overlayInit) overlayInit.style.display = 'none';
+                // reset tarjeta de usuario
+                try {
+                    const tEl = document.getElementById('user-time-card');
+                    const mEl = document.getElementById('user-moves-card');
+                    if (tEl) tEl.textContent = '0s';
+                    if (mEl) mEl.textContent = '0';
+                } catch(e){}
 
                 for(let i=0;i<9;i++){
                     const r = Math.floor(i/3);
@@ -1098,6 +1133,14 @@
                 // Primer movimiento: iniciar cronómetro
                 if (userStartTime === null) userStartTime = Date.now();
                 userMovesCount += 1;
+                // actualizar tarjeta de usuario
+                try {
+                    const secs = userStartTime ? Math.round((Date.now() - userStartTime)/1000) : 0;
+                    const tEl = document.getElementById('user-time-card');
+                    const mEl = document.getElementById('user-moves-card');
+                    if (tEl) tEl.textContent = String(secs) + 's';
+                    if (mEl) mEl.textContent = String(userMovesCount);
+                } catch(e){}
 
                 // Check victoria
                 const resuelto = [1,2,3,4,5,6,7,8,0];
@@ -1111,6 +1154,13 @@
                     if (tEl) tEl.textContent = String(userTimeElapsed);
                     if (mEl) mEl.textContent = String(userMovesCount);
                     if (overlay) overlay.style.display = 'flex';
+                    // asegurar tarjeta final
+                    try {
+                        const tCard = document.getElementById('user-time-card');
+                        const mCard = document.getElementById('user-moves-card');
+                        if (tCard) tCard.textContent = String(userTimeElapsed) + 's';
+                        if (mCard) mCard.textContent = String(userMovesCount);
+                    } catch(e){}
                     // Asegurar texto actualizado (por si overlay no existía antes)
                     const tEl2 = document.getElementById('win-time');
                     const mEl2 = document.getElementById('win-moves');
@@ -1136,9 +1186,8 @@
 
                 const container = document.createElement('div');
                 container.id = 'stats-fallback';
-                container.className = 'w-full mb-8 md:col-span-2 md:col-start-3';
+                container.className = 'flex flex-col gap-6 w-full mb-8 md:mb-0 md:col-span-2 md:col-start-3';
                 container.innerHTML = `
-                    <div class="grid grid-cols-1 gap-2 w-full">
                         <div class="bg-gray-800 border border-green-500/30 rounded-xl p-5 relative overflow-hidden shadow-lg hover:border-green-500/50 transition-colors">
                             <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-400 to-green-600"></div>
                             <div class="flex items-center justify-between mb-4 pl-2">
@@ -1164,7 +1213,23 @@
                                 <div class="md:col-start-5 px-1"><div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Pasos</div><div class="text-white font-mono font-bold text-md">${(bfs.movimientos ?? 0)}</div></div>
                             </div>
                         </div>
-                    </div>
+
+                        <div class="bg-gray-800 border border-indigo-500/30 rounded-xl px-4 py-3 relative overflow-hidden shadow-md hover:border-indigo-500/50 transition-colors">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-indigo-300 font-semibold text-sm flex items-center gap-2">⏱️ Tu Partida</span>
+                                <span class="text-xs font-mono bg-indigo-500/10 text-indigo-300 px-2 py-1 rounded">Live</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-center">
+                                <div>
+                                    <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Tiempo</div>
+                                    <div id="user-time-card" class="text-white font-mono font-bold text-base">0s</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-500 text-[10px] uppercase tracking-wider font-semibold mb-1">Movimientos</div>
+                                    <div id="user-moves-card" class="text-white font-mono font-bold text-base">0</div>
+                                </div>
+                            </div>
+                        </div>
                 `;
 
                 // Insert into results-content in the right-hand column

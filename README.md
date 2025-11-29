@@ -30,9 +30,10 @@ A diferencia de las implementaciones tradicionales que solo generan scripts, est
 * **Carga de Imágenes:** Soporta subida de archivos locales y URLs externas con bypass de restricciones (User-Agent spoofing).
 * **Modo Interactivo y Gamificación:**
     - Bloqueo de interacción manual hasta que el usuario pulse **Mezclar**.
-    - Hint superpuesto previo a la mezcla indicando “Antes de jugar, hacé clic en Mezclar”.
-    - Métricas del usuario: tiempo y cantidad de movimientos manuales.
+    - Hint superpuesto previo a la mezcla: “Antes de jugar, hacé clic en Mezclar”.
+    - Tarjeta compacta “⏱️ Tu Partida” (lado derecho): muestra tiempo transcurrido y cantidad de movimientos del usuario en vivo.
     - Overlay de victoria con botón **Jugar de nuevo** que reinicia con una nueva mezcla.
+    - Botón **Limpiar** visible tras iniciar (aun con imagen por defecto) para reiniciar la sesión.
     - Coherencia de estados al mezclar y resolver luego de movimientos manuales.
 
 ## 🛠️ Stack de Tecnología
@@ -44,6 +45,7 @@ El proyecto evolucionó de un Notebook de análisis a una Aplicación Web modern
 * **Tailwind CSS:** Para el diseño visual, layout responsivo y componentes de UI.
 * **Alpine.js:** Para el manejo de estado reactivo (loading, visualización de resultados) y transiciones.
 * **JavaScript (ES6+):** Lógica central de animación del tablero, manipulación del DOM y modo interactivo con bloqueo de controles durante animaciones.
+* **Tooltips Accesibles (JS + Tailwind):** Íconos “i” junto a labels y controles muestran ayudas contextuales (hover/focus/click). Se posicionan dinámicamente en `body` para evitar recortes.
 
 ### Backend
 * **Python 3:** Lenguaje principal.
@@ -98,6 +100,7 @@ Si deseas correr el proyecto en tu máquina:
 * **Jugar de nuevo:** Desde el overlay de victoria, el botón **Jugar de nuevo** solicita un nuevo puzzle al backend, re-renderiza el tablero y anima automáticamente la nueva mezcla.
 * **Bloqueo durante animaciones:** Mientras se ejecuta una animación, el tablero deshabilita clics y los botones de control se deshabilitan para evitar entradas simultáneas.
 * **Spinner y resultados:** El spinner cubre el panel derecho durante las solicitudes; al concluir, el área de resultados se expande y muestra las métricas.
+* **Altura y Layout del Panel Derecho:** El contenedor de resultados iguala la altura del panel de configuración (izquierdo) y centra su contenido verticalmente para una animación sin saltos.
 
 ## 🎓 Contexto del Proyecto
 
