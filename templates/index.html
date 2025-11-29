@@ -15,38 +15,52 @@
             <header class="mb-6">
                 <h1 class="text-center text-2xl font-bold">Solucionador de Puzzle con IA</h1>
             </header>
-
+            
             <section>
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
                     <form id="solve-form" onsubmit="handleSubmit(event)" class="grid gap-4 bg-gray-800 border border-gray-700 rounded-lg p-4 md:col-span-4 h-full">
                     <div class="grid grid-cols-1 gap-2">
-                        <label class="text-sm text-gray-300">Subir Imagen</label>
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm text-gray-300">Subir Imagen</label>
+                            <button type="button" aria-label="Ayuda subir imagen" data-tooltip="Seleccioná un archivo local (jpg/png) para usarlo como puzzle. Si no eligés nada y tampoco URL, se usa la imagen por defecto." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">i</button>
+                        </div>
                         <input id="file-input" name="imagen" type="file" accept="image/*" class="hidden" />
                         <div class="flex items-center gap-3">
                             <label for="file-input" id="file-label" class="px-3 py-2 rounded bg-gray-700 hover:bg-gray-600 cursor-pointer text-sm">Seleccionar archivo</label>
                             <span id="file-name" class="text-sm text-gray-400">Ningún archivo seleccionado</span>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-1 gap-2">
-                        <label class="text-sm text-gray-300">O URL de Imagen</label>
-                        <input id="url-input" name="image-url" type="text" placeholder="Pega una URL de imagen aquí" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                    </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm text-gray-300">O URL de Imagen</label>
+                            <button type="button" aria-label="Ayuda URL imagen" data-tooltip="Pegá una URL directa a una imagen (termina en .jpg, .png). El backend la descargará y la recortará al tamaño del puzzle. Si no eligés nada y tampoco subes una imagen, se usará una por defecto." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">i</button>
+                        </div>
+                        <input id="url-input" name="image-url" type="text" placeholder="URL de imagen aquí" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>   
 
                     <!-- Algorithm selector removed: using default A* on backend requests -->
 
                     <div class="grid grid-cols-1 gap-1">
-                        <label class="text-sm text-gray-300">Cantidad de Mezclas: <span id="mezclas-val">30</span></label>
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm text-gray-300">Cantidad de Mezclas: <span id="mezclas-val">30</span></label>
+                            <button type="button" aria-label="Ayuda mezclas" data-tooltip="Número de movimientos aleatorios válidos aplicados para mezclar el tablero." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">i</button>
+                        </div>
                         <input id="mezclas-range" type="range" value="30" min="1" max="100" class="w-full" />
                     </div>
-
+                        
                     <div class="grid grid-cols-1 gap-1">
-                        <label class="text-sm text-gray-300">Pausa de Animación (s): <span id="pausa-val">0.5</span></label>
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm text-gray-300">Pausa de Animación (s): <span id="pausa-val">0.5</span></label>
+                            <button type="button" aria-label="Ayuda pausa animación" data-tooltip="Tiempo de espera entre movimientos durante la animación de la solución. Valores menores = animación más rápida." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">i</button>
+                        </div>
                         <input id="pausa-range" type="range" value="0.5" min="0.1" max="2" step="0.1" class="w-full" />
                     </div>
 
                     <div class="grid grid-cols-1 gap-2">
-                        <label class="text-sm text-gray-300">Semilla Aleatoria (opcional)</label>
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm text-gray-300">Semilla Aleatoria (opcional)</label>
+                            <button type="button" aria-label="Ayuda semilla" data-tooltip="Usá un número (ej. 123) para generar siempre la misma mezcla y comparar ejecuciones. Si lo dejás vacío, cada mezcla será distinta." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">i</button>
+                        </div>
                         <input id="semilla-input" name="semilla" type="number" placeholder="Opcional" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                     </div>
 
@@ -80,12 +94,15 @@
                                     <div id="puzzle-board" style="position:relative;" class="bg-gray-900 border border-gray-700 mb-2 mx-auto w-full aspect-square max-w-[480px]"></div>
                                 </div>
                                 <div class="w-full flex justify-center mt-3">
-                                    <div class="w-[300px] flex justify-center items-center gap-4">
-                                        <div class="flex items-center">
-                                            <button id="mix-btn" onclick="handleMix()" class="px-3 py-1 rounded bg-yellow-600 hover:bg-yellow-500" hidden>Mezclar</button>
-                                            <button id="solve-btn" onclick="handleSolve()" class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 ml-2" hidden>Resolver</button>
-                                        </div>
-                                        <div class="text-sm text-gray-400"><span id="display-pausa" class="text-gray-400 text-sm font-medium">Pausa: 0.5s</span></div>
+                                        <div class="w-[300px] flex justify-center items-center gap-4">
+                                            <div class="flex items-center">
+                                                <button id="mix-btn" onclick="handleMix()" class="px-3 py-1 rounded bg-yellow-600 hover:bg-yellow-500" hidden>Mezclar</button>
+                                                <button id="solve-btn" onclick="handleSolve()" class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 ml-2" hidden>Resolver</button>
+                                            </div>
+                                            <div class="text-sm text-gray-400 flex items-center gap-1">
+                                                <span id="display-pausa" class="text-gray-400 text-sm font-medium">Pausa: 0.5s</span>
+                                                <button type="button" id="puzzle-hint-btn" aria-label="Ayuda del puzzle" data-tooltip="Hacé clic en una pieza adyacente al espacio vacío para moverla. Objetivo: ordenar hasta formar la imagen completa (1..8 y el 0 es el vacío)." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ml-2">i</button>
+                                            </div>
                                     </div>
                                 </div>
                             </div>
@@ -141,6 +158,10 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <p id="stats-inline-help" class="text-xs text-gray-400 mt-1 leading-tight">A*: usa heurística (Manhattan) y suele ser más rápido. BFS: explora en amplitud; garantiza solución mínima pero visita más estados.</p>
+                                        <div class="flex items-center justify-end">
+                                            <button type="button" id="stats-hint-btn" aria-label="Ayuda estadísticas" data-tooltip="A*: heurístico (Manhattan), rápido y eficiente. BFS: fuerza bruta, garantiza pasos mínimos pero explora muchos más estados." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">i</button>
+                                        </div>
                                 </div>
                             </template>
                             <!-- controls moved inside puzzle column to avoid duplicates -->
@@ -642,6 +663,77 @@
             }
 
             document.addEventListener('DOMContentLoaded', initUI);
+            // Tooltip simple (hover en desktop, click toggling en mobile / touch)
+            function initTooltips(){
+                const buttons = document.querySelectorAll('[data-tooltip]');
+                function positionTooltip(btn, tipEl){
+                    const rect = btn.getBoundingClientRect();
+                    const vw = window.innerWidth;
+                    const vh = window.innerHeight;
+                    const padding = 8;
+                    const tipRect = tipEl.getBoundingClientRect();
+                    let top = rect.bottom + 6; // default below
+                    // If not enough space below, place above
+                    if (top + tipRect.height + padding > vh){
+                        top = rect.top - tipRect.height - 6;
+                    }
+                    let left = rect.left + rect.width/2 - tipRect.width/2;
+                    if (left < padding) left = padding;
+                    if (left + tipRect.width + padding > vw) left = vw - tipRect.width - padding;
+                    tipEl.style.top = top + 'px';
+                    tipEl.style.left = left + 'px';
+                }
+                buttons.forEach(btn => {
+                    let tipEl = null;
+                    function create(){
+                        if (tipEl) return;
+                        tipEl = document.createElement('div');
+                        tipEl.className = 'fixed z-50 px-2 py-1 rounded bg-gray-800 border border-gray-700 text-[11px] leading-snug text-gray-200 shadow-lg w-60';
+                        tipEl.style.opacity = '0';
+                        tipEl.style.transition = 'opacity 120ms ease';
+                        tipEl.setAttribute('role','tooltip');
+                        tipEl.textContent = btn.getAttribute('data-tooltip');
+                        document.body.appendChild(tipEl);
+                        positionTooltip(btn, tipEl);
+                        requestAnimationFrame(()=>{ tipEl.style.opacity = '1'; });
+                    }
+                    function destroy(){
+                        if (!tipEl) return;
+                        tipEl.style.opacity = '0';
+                        setTimeout(()=>{ if (tipEl && tipEl.parentNode) tipEl.parentNode.removeChild(tipEl); tipEl = null; }, 140);
+                    }
+                    // Reposition on scroll/resize while visible
+                    ['scroll','resize'].forEach(evName => {
+                        window.addEventListener(evName, () => { if (tipEl) positionTooltip(btn, tipEl); }, { passive:true });
+                    });
+                    // Hover
+                    btn.addEventListener('mouseenter', () => { create(); });
+                    btn.addEventListener('mouseleave', () => { destroy(); });
+                    // Focus
+                    btn.addEventListener('focus', () => { create(); });
+                    btn.addEventListener('blur', () => { destroy(); });
+                    // Click toggle (mobile + optional desktop persistence)
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (tipEl) destroy(); else create();
+                    });
+                });
+                // Global click fuera para cerrar
+                document.addEventListener('click', (ev) => {
+                    buttons.forEach(btn => {
+                        if (!btn.contains(ev.target)){
+                            const allTips = document.querySelectorAll('div[role="tooltip"]');
+                            allTips.forEach(t => {
+                                if (t.style.opacity === '1' && !btn.contains(ev.target)){
+                                    t.style.opacity = '0';
+                                    setTimeout(()=>{ if (t.parentNode) t.parentNode.removeChild(t); }, 140);
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+            document.addEventListener('DOMContentLoaded', initTooltips);
 
             function iniciarPuzzle(data){
                 // store moves
