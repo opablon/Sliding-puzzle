@@ -21,6 +21,16 @@ Esta aplicación es una implementación **Full-Stack** de un solucionador inteli
 
 A diferencia de las implementaciones tradicionales que solo generan scripts, este proyecto es una **Web App interactiva** que permite al usuario cargar sus propias imágenes, mezclar el tablero en tiempo real y visualizar cómo la Inteligencia Artificial (A* o BFS) resuelve el problema paso a paso mediante animaciones en el DOM.
 
+## 🧭 Flujo de Interacción y Consistencia
+
+* **Cargar/Iniciar:** Se muestra el tablero en estado resuelto con la imagen cortada y un hint que indica que primero se debe pulsar **Mezclar**.
+* **Mezclar:** Antes de animar la mezcla, el tablero se restablece al estado resuelto; luego se anima la secuencia de mezclas recibida del backend y se habilita la interacción manual.
+* **Resolver:** Si hiciste movimientos manuales, la UI restablece el tablero al **estado mezclado original** (provisto por el backend, aplanado a un arreglo de 9 números) y después anima la solución (A* paso a paso).
+* **Jugar de nuevo:** Desde el overlay de victoria, el botón **Jugar de nuevo** solicita un nuevo puzzle al backend, re-renderiza el tablero y anima automáticamente la nueva mezcla.
+* **Bloqueo durante animaciones:** Mientras se ejecuta una animación, el tablero deshabilita clics y los botones de control se deshabilitan para evitar entradas simultáneas.
+* **Spinner y resultados:** El spinner cubre el panel derecho durante las solicitudes; al concluir, el área de resultados se expande y muestra las métricas.
+* **Altura y Layout del Panel Derecho:** El contenedor de resultados iguala la altura del panel de configuración (izquierdo) y centra su contenido verticalmente para una animación sin saltos.
+
 ## ✨ Características Principales
 
 * **Arquitectura Reactiva:** El frontend no recarga la página. Utiliza **Alpine.js** para gestionar el estado y **JavaScript** puro para animaciones de alto rendimiento a 60fps.
@@ -91,16 +101,6 @@ Si deseas correr el proyecto en tu máquina:
     python app.py
     ```
 4.  Abrir `http://127.0.0.1:5000` en tu navegador.
-
-## 🧭 Flujo de Interacción y Consistencia
-
-* **Cargar/Iniciar:** Se muestra el tablero en estado resuelto con la imagen cortada y un hint que indica que primero se debe pulsar **Mezclar**.
-* **Mezclar:** Antes de animar la mezcla, el tablero se restablece al estado resuelto; luego se anima la secuencia de mezclas recibida del backend y se habilita la interacción manual.
-* **Resolver:** Si hiciste movimientos manuales, la UI restablece el tablero al **estado mezclado original** (provisto por el backend, aplanado a un arreglo de 9 números) y después anima la solución (A* paso a paso).
-* **Jugar de nuevo:** Desde el overlay de victoria, el botón **Jugar de nuevo** solicita un nuevo puzzle al backend, re-renderiza el tablero y anima automáticamente la nueva mezcla.
-* **Bloqueo durante animaciones:** Mientras se ejecuta una animación, el tablero deshabilita clics y los botones de control se deshabilitan para evitar entradas simultáneas.
-* **Spinner y resultados:** El spinner cubre el panel derecho durante las solicitudes; al concluir, el área de resultados se expande y muestra las métricas.
-* **Altura y Layout del Panel Derecho:** El contenedor de resultados iguala la altura del panel de configuración (izquierdo) y centra su contenido verticalmente para una animación sin saltos.
 
 ## 🎓 Contexto del Proyecto
 
