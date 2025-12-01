@@ -1,7 +1,7 @@
 import numpy as np
 from collections import deque
 import random
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 import requests
 from io import BytesIO
 import io
@@ -48,6 +48,14 @@ def cargar_imagen(url_o_ruta, tamano, REDIMENSION_IMAGEN):
 
     else:
         raise ValueError("Tipo de entrada de imagen no soportado")
+
+    # Ajuste de orientación según EXIF (rotación automática de fotos verticales de móviles).
+    # ImageOps.exif_transpose crea una copia si se requiere rotar/voltear; si no, devuelve la misma.
+    try:
+        imagen = ImageOps.exif_transpose(imagen)
+    except Exception:
+        # Silenciar cualquier error de metadatos corruptos; continuar con la imagen tal cual.
+        pass
 
     lado_minimo = min(imagen.size)
     imagen = imagen.crop((0, 0, lado_minimo, lado_minimo))
