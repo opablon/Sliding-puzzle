@@ -101,7 +101,7 @@
                                             </div>
                                             <div class="text-sm text-gray-400 flex items-center gap-1">
                                                 <span id="display-pausa" class="text-gray-400 text-sm font-medium">Pausa: 0.5s</span>
-                                                <button type="button" id="puzzle-hint-btn" aria-label="Ayuda del puzzle" data-tooltip="Hacé clic en una pieza adyacente al espacio vacío para moverla. Objetivo: ordenar hasta formar la imagen completa (1..8 y el 0 es el vacío)." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ml-2">i</button>
+                                                <button type="button" id="puzzle-hint-btn" aria-label="Ayuda del puzzle" data-tooltip="Hacé clic en una pieza adyacente al espacio vacío para moverla." class="relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-300 text-[10px] font-bold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ml-2">i</button>
                                             </div>
                                     </div>
                                 </div>
@@ -164,6 +164,7 @@
                                         </div>
                                         <!-- Tarjeta pequeña de métricas del usuario -->
                                         <div class="bg-gray-800 border border-indigo-500/30 rounded-xl px-4 py-3 relative overflow-hidden shadow-md hover:border-indigo-500/50 transition-colors">
+                                            <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-indigo-600"></div>
                                             <div class="flex items-center justify-between mb-2">
                                                 <span class="text-indigo-300 font-semibold text-sm flex items-center gap-2">⏱️ Tu Partida</span>
                                                 <span class="text-xs font-mono bg-indigo-500/10 text-indigo-300 px-2 py-1 rounded">Live</span>
@@ -692,6 +693,14 @@
 
             document.addEventListener('DOMContentLoaded', initUI);
             // Tooltip simple (hover en desktop, click toggling en mobile / touch)
+            // Añade protección contra parpadeo en hover y eventos sintéticos post-touch
+            let __lastTouchTime = 0;
+            try {
+                document.addEventListener('touchstart', () => { __lastTouchTime = Date.now(); }, { passive: true });
+            } catch (e) { /* ignore */ }
+            function recentlyTouched(threshold = 700){
+                return (Date.now() - __lastTouchTime) < threshold;
+            }
             function initTooltips(){
                 const buttons = document.querySelectorAll('[data-tooltip]');
                 function positionTooltip(btn, tipEl){
@@ -713,51 +722,78 @@
                 }
                 buttons.forEach(btn => {
                     let tipEl = null;
+                    let closeTimer = null;
                     function create(){
+                        if (closeTimer){ clearTimeout(closeTimer); closeTimer = null; }
                         if (tipEl) return;
                         tipEl = document.createElement('div');
                         tipEl.className = 'fixed z-50 px-2 py-1 rounded bg-gray-800 border border-gray-700 text-[11px] leading-snug text-gray-200 shadow-lg w-60';
                         tipEl.style.opacity = '0';
                         tipEl.style.transition = 'opacity 120ms ease';
+                        tipEl.style.pointerEvents = 'none';
                         tipEl.setAttribute('role','tooltip');
                         tipEl.textContent = btn.getAttribute('data-tooltip');
+                        // colocar fuera de pantalla para evitar flash en 0,0
+                        tipEl.style.left = '-9999px';
+                        tipEl.style.top = '-9999px';
                         document.body.appendChild(tipEl);
-                        positionTooltip(btn, tipEl);
-                        requestAnimationFrame(()=>{ tipEl.style.opacity = '1'; });
+                        // posicionar en el próximo frame cuando layout esté listo
+                        requestAnimationFrame(() => {
+                            positionTooltip(btn, tipEl);
+                            // segundo frame por si Tailwind aplica tamaños asíncronos
+                            requestAnimationFrame(() => { positionTooltip(btn, tipEl); tipEl.style.opacity = '1'; });
+                        });
                     }
                     function destroy(){
                         if (!tipEl) return;
                         tipEl.style.opacity = '0';
                         setTimeout(()=>{ if (tipEl && tipEl.parentNode) tipEl.parentNode.removeChild(tipEl); tipEl = null; }, 140);
                     }
+                    function scheduleDestroy(delay = 180){
+                        if (closeTimer){ clearTimeout(closeTimer); }
+                        closeTimer = setTimeout(() => {
+                            closeTimer = null;
+                            destroy();
+                        }, delay);
+                    }
                     // Reposition on scroll/resize while visible
                     ['scroll','resize'].forEach(evName => {
                         window.addEventListener(evName, () => { if (tipEl) positionTooltip(btn, tipEl); }, { passive:true });
                     });
                     // Hover
-                    btn.addEventListener('mouseenter', () => { create(); });
-                    btn.addEventListener('mouseleave', () => { destroy(); });
-                    // Focus
-                    btn.addEventListener('focus', () => { create(); });
-                    btn.addEventListener('blur', () => { destroy(); });
+                    btn.addEventListener('mouseenter', () => {
+                        if (recentlyTouched()) return; // ignora hover sintético tras touch
+                        if (closeTimer){ clearTimeout(closeTimer); closeTimer = null; }
+                        create();
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        if (recentlyTouched()) return; // evita cerrar de inmediato tras touch
+                        scheduleDestroy(200);
+                    });
+                    // Focus: sólo para teclado; ignora si viene de touch reciente
+                    btn.addEventListener('focus', () => { if (!recentlyTouched()) create(); });
+                    btn.addEventListener('blur', () => { if (!recentlyTouched()) scheduleDestroy(120); });
                     // Click toggle (mobile + optional desktop persistence)
                     btn.addEventListener('click', (e) => {
                         e.preventDefault();
-                        if (tipEl) destroy(); else create();
+                        e.stopPropagation();
+                        if (closeTimer){ clearTimeout(closeTimer); closeTimer = null; }
+                        if (!tipEl) {
+                            create();
+                        } else {
+                            // En touch: no cerrar en el mismo tap que lo abrió
+                            if (!recentlyTouched()) destroy();
+                        }
                     });
                 });
-                // Global click fuera para cerrar
+                // Global: cerrar sólo si el click ocurre fuera de TODOS los botones
                 document.addEventListener('click', (ev) => {
-                    buttons.forEach(btn => {
-                        if (!btn.contains(ev.target)){
-                            const allTips = document.querySelectorAll('div[role="tooltip"]');
-                            allTips.forEach(t => {
-                                if (t.style.opacity === '1' && !btn.contains(ev.target)){
-                                    t.style.opacity = '0';
-                                    setTimeout(()=>{ if (t.parentNode) t.parentNode.removeChild(t); }, 140);
-                                }
-                            });
-                        }
+                    const insideAny = Array.from(buttons).some(b => b.contains(ev.target));
+                    if (insideAny) return;
+                    const allTips = document.querySelectorAll('div[role="tooltip"]');
+                    allTips.forEach(t => {
+                        t.style.opacity = '0';
+                        setTimeout(()=>{ if (t.parentNode) t.parentNode.removeChild(t); }, 140);
                     });
                 });
             }
@@ -1215,7 +1251,8 @@
                         </div>
 
                         <div class="bg-gray-800 border border-indigo-500/30 rounded-xl px-4 py-3 relative overflow-hidden shadow-md hover:border-indigo-500/50 transition-colors">
-                            <div class="flex items-center justify-between mb-2">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-indigo-600"></div>
+                            <div class="flex items-center justify-between mb-2 pl-2">
                                 <span class="text-indigo-300 font-semibold text-sm flex items-center gap-2">⏱️ Tu Partida</span>
                                 <span class="text-xs font-mono bg-indigo-500/10 text-indigo-300 px-2 py-1 rounded">Live</span>
                             </div>
