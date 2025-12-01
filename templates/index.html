@@ -91,7 +91,14 @@
                             <!-- Puzzle board (relative container; pieces positioned absolutely) -->
                             <div class="md:col-start-1 md:col-span-2 flex flex-col items-center">
                                 <div class="w-full flex justify-center">
-                                    <div id="puzzle-board" style="position:relative;" class="bg-gray-900 border border-gray-700 mb-2 mx-auto w-full aspect-square max-w-[480px]"></div>
+                                    <div id="puzzle-board" style="position:relative;" class="bg-gray-900 border border-gray-700 mb-2 mx-auto w-full aspect-square max-w-[480px] select-none">
+                                        <!-- Toast educativo: oculto por defecto -->
+                                        <div id="drag-toast"
+                                             class="absolute left-1/2 -translate-x-1/2 bottom-3 px-3 py-2 rounded bg-black/80 text-white text-xs shadow-lg pointer-events-none z-50 select-none"
+                                             style="opacity:0; transition: opacity 200ms ease;">
+                                            👆 Para mover, solo haz clic en la pieza
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="w-full flex justify-center mt-3">
                                         <div class="w-[300px] flex justify-center items-center gap-4">
@@ -362,6 +369,28 @@
             let userStartTime = null;
             let userWon = false;
             let userTimeElapsed = 0;
+
+            // Toast de arrastre: estado con cooldown
+            let dragToastTimer = null;
+            let dragToastLastShown = 0;
+            const DRAG_TOAST_DURATION = 3000; // ms visible
+            const DRAG_TOAST_COOLDOWN = 2500; // ms mínimo entre apariciones
+
+            function showDragToast(){
+                const now = Date.now();
+                if (now - dragToastLastShown < DRAG_TOAST_COOLDOWN) return; // respetar cooldown
+                dragToastLastShown = now;
+                const el = document.getElementById('drag-toast');
+                if (!el) return;
+                // mostrar
+                el.style.opacity = '1';
+                // reiniciar timer si ya estaba corriendo
+                if (dragToastTimer) clearTimeout(dragToastTimer);
+                dragToastTimer = setTimeout(() => {
+                    el.style.opacity = '0';
+                    dragToastTimer = null;
+                }, DRAG_TOAST_DURATION);
+            }
 
             function repaintBoardFromTablero(){
                 const board = document.getElementById('puzzle-board');
@@ -700,6 +729,52 @@
                     });
                 }
 
+                // Detección de intento de arrastre en el tablero (educativo)
+                (function initDragEducation(){
+                    const board = document.getElementById('puzzle-board');
+                    if (!board) return;
+                    let isDown = false;
+                    let startX = 0, startY = 0;
+                    const THRESHOLD = 10; // px
+
+                    function onStart(x, y){
+                        isDown = true;
+                        startX = x;
+                        startY = y;
+                    }
+                    function onMove(x, y){
+                        if (!isDown) return;
+                        const dx = x - startX;
+                        const dy = y - startY;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > THRESHOLD){
+                            // mostrar con cooldown para no saturar
+                            showDragToast();
+                            // Evitar múltiples disparos en el mismo gesto
+                            isDown = false;
+                        }
+                    }
+                    function onEnd(){ isDown = false; }
+
+                    // Mouse
+                    board.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
+                    board.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+                    board.addEventListener('mouseup', onEnd);
+                    board.addEventListener('mouseleave', onEnd);
+
+                    // Touch
+                    board.addEventListener('touchstart', (e) => {
+                        const t = e.touches && e.touches[0];
+                        if (t) onStart(t.clientX, t.clientY);
+                    }, { passive: true });
+                    board.addEventListener('touchmove', (e) => {
+                        const t = e.touches && e.touches[0];
+                        if (t) onMove(t.clientX, t.clientY);
+                    }, { passive: true });
+                    board.addEventListener('touchend', onEnd, { passive: true });
+                    board.addEventListener('touchcancel', onEnd, { passive: true });
+                })();
+
                 // initialize displays
                 updateSliderDisplays();
                 // set the displayed pausa to current slider value on load
@@ -834,7 +909,7 @@
                 if (!hint){
                     hint = document.createElement('div');
                     hint.id = 'pre-mix-hint';
-                    hint.className = 'absolute inset-0 flex items-center justify-center bg-indigo-900/40 text-indigo-100 text-center px-4';
+                    hint.className = 'absolute inset-0 flex items-center justify-center bg-indigo-900/40 text-indigo-100 text-center px-4 select-none';
                     hint.style.zIndex = '25';
                     hint.innerHTML = `
                         <div class="space-y-2">
@@ -852,7 +927,7 @@
                 if (!overlay){
                     overlay = document.createElement('div');
                     overlay.id = 'win-overlay';
-                    overlay.className = 'absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center px-4';
+                    overlay.className = 'absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center px-4 select-none';
                     overlay.style.display = 'none';
                     overlay.style.zIndex = '30';
                     overlay.innerHTML = `
