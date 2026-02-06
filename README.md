@@ -87,7 +87,7 @@ Si deseas correr el proyecto en tu máquina:
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [https://github.com/opablon/Sliding-puzzle.git](https://github.com/opablon/Sliding-puzzle.git)
+    git clone https://github.com/opablon/Sliding-puzzle.git
     cd Sliding-puzzle
     ```
 
